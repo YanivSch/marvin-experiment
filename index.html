@@ -52,6 +52,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--marvin);outline-off
 .choices button{padding:18px 8px;font-size:19px;font-weight:700;color:#fff}
 .choices .pos{background:var(--pos)} .choices .neg{background:var(--neg)}
 .choices button:disabled{opacity:.35;cursor:default}
+.primary:disabled{opacity:.55;cursor:default}
 .verdict{margin-top:14px;padding:13px 16px;border-radius:12px;font-weight:500;background:var(--card);border:2px solid var(--ink)}
 .verdict button{margin-top:10px}
 
@@ -113,6 +114,7 @@ const CONDS = {
 };
 const HE = {pos:"חיובית", neg:"שלילית"};
 const LETTER = {conf:"C", top1:"E", adapt:"A"};
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwUzo2U8YDiKNB8abNtQK_Eu7cPN4w-n7zlg15_86dtgA35QXARrqDfLq3vJF4VfPFyAw/exec";
 const AI_ACC = TEAM.filter(i=>i.ai===i.t).length / TEAM.length;
 
 /* ---------- מצב ---------- */
@@ -123,7 +125,7 @@ const store = {
 let S = fresh();
 function fresh(cond){
   const keys = Object.keys(CONDS);
-  return {cond: cond || keys[Math.floor(Math.random()*keys.length)], i:0, soloAns:[], teamAns:[], stage:"intro"};
+  return {cond: cond || keys[Math.floor(Math.random()*keys.length)], i:0, soloAns:[], teamAns:[], stage:"intro", sent:false};
 }
 const app = document.getElementById("app");
 const nav = document.getElementById("nav");
@@ -239,9 +241,11 @@ function results(){
 
   <div class="note" style="border:2px solid var(--ink)">
     <h3>שלחו את התוצאה שלכם לכיתה</h3>
-    <p class="small">העתיקו את הקוד והדביקו אותו בקבוצת הקורס. המרצה יאסוף את כל הקודים ויציג את התמונה הכיתתית.</p>
+    <p class="small">לחיצה אחת שולחת את הקוד למרצה. הקוד אנונימי: הוא כולל רק את הקבוצה שלכם וארבעה מספרים.</p>
     <div class="code" id="code">${code}</div>
-    <button class="primary" id="copy">להעתיק את הקוד</button>
+    <button class="primary" id="send" ${S.sent?"disabled":""}>${S.sent?"התוצאה נשלחה":"לשלוח את התוצאה"}</button>
+    <p class="small muted" id="sendmsg" aria-live="polite" style="margin:10px 0 0"></p>
+    <button class="ghost" id="copy" style="margin-top:10px;width:100%">להעתיק את הקוד</button>
   </div>
 
   <div class="reveal">
@@ -275,6 +279,20 @@ function results(){
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
     <button class="ghost" id="again">לשחק שוב בקבוצה אחרת</button>
   </div>`;
+  document.getElementById("send").onclick = async e=>{
+    const btn = e.target, msg = document.getElementById("sendmsg");
+    if (S.sent) return;
+    btn.disabled = true; btn.textContent = "שולח...";
+    try{
+      // בקשה פשוטה בלי קריאת התשובה: Apps Script לא מחזיר כותרות CORS
+      await fetch(SHEET_URL, {method:"POST", mode:"no-cors", body:new URLSearchParams({code})});
+      S.sent = true; btn.textContent = "התוצאה נשלחה";
+      msg.textContent = "תודה. אפשר להניח את הטלפון.";
+    }catch(err){
+      btn.disabled = false; btn.textContent = "לנסות לשלוח שוב";
+      msg.textContent = "השליחה לא הצליחה. בדקו את החיבור לרשת, או העתיקו את הקוד והדביקו אותו בקבוצת הקורס.";
+    }
+  };
   document.getElementById("copy").onclick = async e=>{
     try{ await navigator.clipboard.writeText(code); e.target.textContent="הקוד הועתק"; }
     catch(err){ const r=document.createRange(); r.selectNodeContents(document.getElementById("code")); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); e.target.textContent="הקוד מסומן, העתיקו אותו ידנית"; }
@@ -307,7 +325,7 @@ function classBoard(){
   const group = (f, d, zone) => keys.map(k=>bar(`${CONDS[k].name} (${by(k).length})`, avg(by(k), f, d), colors[k], zone)).join("");
   app.innerHTML = `
   <h1>התוצאות של כל הכיתה</h1>
-  <p>בסוף הניסוי כל סטודנט מקבל קוד קצר ומדביק אותו בקבוצת הקורס. העתיקו את כל ההודעות מהקבוצה והדביקו אותן כאן. אין צורך לנקות שמות, שעות או טקסט אחר.</p>
+  <p>בסוף הניסוי כל סטודנט שולח את הקוד שלו לגיליון. העתיקו את עמודת הקודים מהגיליון (או שורות שלמות) והדביקו כאן. אין צורך לנקות תאריכים או טקסט אחר.</p>
   <textarea id="codes" rows="5" dir="ltr" placeholder="MRV-E-3-8-6-2 ...">${text.replace(/</g,"&lt;")}</textarea>
   <div style="display:flex;gap:10px;margin:10px 0 4px">
     <button class="primary" id="load">לעדכן את הלוח</button>
