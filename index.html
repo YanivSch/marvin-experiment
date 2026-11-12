@@ -82,7 +82,7 @@ textarea{width:100%;font:15px ui-monospace,Menlo,monospace;padding:12px;border:2
 </style>
 </head>
 <body>
-<header><b>הניסוי של מרווין</b><a href="#class" id="nav">לוח כיתה למרצה</a></header>
+<header><b>הניסוי של מרווין</b></header>
 <main id="app"></main>
 
 <script>
@@ -128,13 +128,10 @@ function fresh(cond){
   return {cond: cond || keys[Math.floor(Math.random()*keys.length)], i:0, soloAns:[], teamAns:[], stage:"intro", sent:false};
 }
 const app = document.getElementById("app");
-const nav = document.getElementById("nav");
 const pct = n => Math.round(n*100)+"%";
 
 /* ---------- תצוגות ---------- */
 function render(){
-  if (location.hash==="#class"){ nav.textContent="חזרה לניסוי"; nav.href="#"; return classBoard(); }
-  nav.textContent="לוח כיתה למרצה"; nav.href="#class";
   ({intro, play, results})[S.stage]();
   window.scrollTo(0,0);
 }
@@ -303,54 +300,6 @@ function results(){
   };
 }
 
-/* ---------- לוח כיתה: איסוף קודים ---------- */
-function parseCodes(text){
-  const back = {C:"conf", E:"top1", A:"adapt"}, out = [];
-  const re = /MRV-([CEA])-(\d)-(\d{1,2})-(\d)-(\d)/g; let m;
-  while ((m = re.exec(text))){
-    const [solo, team, ar, aw] = m.slice(2).map(Number);
-    if (solo<=SOLO.length && team<=TEAM.length && ar<=7 && aw<=3) out.push({cond:back[m[1]], solo, team, ar, aw});
-  }
-  return out;
-}
-function classBoard(){
-  const text = store.get("marvin-codes", "");
-  const R = parseCodes(text);
-  const avg = (arr, f, d) => arr.length ? arr.reduce((s,r)=>s+f(r),0)/arr.length/d : 0;
-  const by = k => R.filter(r=>r.cond===k);
-  const keys = Object.keys(CONDS);
-  const colors = {conf:"var(--ink)", top1:"var(--neg)", adapt:"var(--marvin)"};
-  const soloAll = avg(R, r=>r.solo, SOLO.length);
-  const best = Math.max(soloAll, AI_ACC);
-  const group = (f, d, zone) => keys.map(k=>bar(`${CONDS[k].name} (${by(k).length})`, avg(by(k), f, d), colors[k], zone)).join("");
-  app.innerHTML = `
-  <h1>התוצאות של כל הכיתה</h1>
-  <p>בסוף הניסוי כל סטודנט שולח את הקוד שלו לגיליון. העתיקו את עמודת הקודים מהגיליון (או שורות שלמות) והדביקו כאן. אין צורך לנקות תאריכים או טקסט אחר.</p>
-  <textarea id="codes" rows="5" dir="ltr" placeholder="MRV-E-3-8-6-2 ...">${text.replace(/</g,"&lt;")}</textarea>
-  <div style="display:flex;gap:10px;margin:10px 0 4px">
-    <button class="primary" id="load">לעדכן את הלוח</button>
-    <button class="ghost" id="reset">לנקות</button>
-  </div>
-  <p class="small muted" aria-live="polite">${R.length ? `נקלטו ${R.length} תוצאות.` : "עדיין לא נקלטו תוצאות."}</p>
-  ${R.length ? `
-  <h2>דיוק הצוות, לפי קבוצה</h2>
-  <div class="chart">
-    ${bar("סטודנטים לבד", soloAll, "var(--muted)")}
-    ${bar("מרווין לבד", AI_ACC, "var(--muted)")}
-    ${group(r=>r.team, TEAM.length, best)}
-  </div>
-  <p class="small muted">בסוגריים: מספר הסטודנטים בקבוצה. האזור המקווקו הוא האזור המשלים, מעל הטוב מבין האדם וה־AI. לפי המאמר צפוי שכל הקבוצות ייכנסו אליו, בלי הבדל מובהק ביניהן.</p>
-  <h2>הלכו אחרי מרווין כשהוא טעה</h2>
-  <div class="chart">${group(r=>r.aw, 3)}</div>
-  <p class="small muted">שיעור הטעויות של מרווין (3 בסך הכול) שהסטודנטים אימצו. לפי המאמר צפוי שקבוצת "הסבר להמלצה" תוביל.</p>
-  <h2>הסכימו עם מרווין כשהוא צדק</h2>
-  <div class="chart">${group(r=>r.ar, 7)}</div>
-  <p class="small muted">אם הסבר מעלה את שני הגרפים האחרונים יחד, הוא מגדיל אמון ולא כושר הבחנה. זו הטענה המרכזית של המאמר.</p>` : ""}`;
-  document.getElementById("load").onclick = ()=>{ store.set("marvin-codes", document.getElementById("codes").value); classBoard(); };
-  document.getElementById("reset").onclick = ()=>{ store.set("marvin-codes", ""); classBoard(); };
-}
-
-window.addEventListener("hashchange", render);
 render();
 </script>
 </body>
