@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>הניסוי של מרווין: האם הסבר של AI עוזר לנו להחליט?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E9ECF5; --card:#fff; --ink:#1A1D3A; --muted:#5C6185;
+  --pos:#0E8A7D; --pos-bg:#D3F0EB; --neg:#BF2F68; --neg-bg:#F9D9E5;
+  --marvin:#E9A823; --marvin-bg:#FFF4D6; --line:#CDD2E4;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:Rubik,system-ui,sans-serif;font-size:17px;line-height:1.55}
+header{background:var(--ink);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+header b{font-weight:800;font-size:18px}
+header a{color:#fff;font-size:14px;opacity:.85}
+main{max-width:660px;margin:0 auto;padding:22px 18px 60px}
+h1{font-size:clamp(30px,7vw,46px);line-height:1.12;font-weight:800;margin:18px 0 14px;letter-spacing:-.01em}
+h2{font-size:24px;line-height:1.2;font-weight:800;margin:34px 0 10px}
+h3{font-size:18px;margin:0 0 6px;font-weight:700}
+p{margin:0 0 12px}
+.muted{color:var(--muted)}
+.small{font-size:14.5px}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px}
+button:focus-visible,a:focus-visible{outline:3px solid var(--marvin);outline-offset:2px}
+.primary{background:var(--ink);color:#fff;padding:15px 24px;font-weight:700;font-size:18px;width:100%}
+.ghost{background:transparent;color:var(--ink);border:2px solid var(--ink);padding:11px 18px;font-weight:500}
+.steps{padding:0;margin:16px 0 22px;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;padding:10px 46px 10px 0;position:relative;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;right:0;top:9px;width:30px;height:30px;border-radius:50%;background:var(--marvin);font-weight:800;display:grid;place-items:center}
+
+.progress{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.progress i{display:block;height:100%;background:var(--ink);transition:width .3s}
+.phase{display:flex;justify-content:space-between;font-size:14.5px;color:var(--muted);margin-bottom:14px}
+.review{background:var(--card);border-radius:14px;padding:22px 20px;font-family:"Frank Ruhl Libre",serif;font-size:21px;line-height:1.7;min-height:150px}
+.review mark{background:none;color:inherit;border-radius:4px;padding:1px 3px}
+.review mark.pos.on{background:var(--pos-bg);box-shadow:inset 0 -2px 0 var(--pos)}
+.review mark.neg.on{background:var(--neg-bg);box-shadow:inset 0 -2px 0 var(--neg)}
+.marvin{margin-top:12px;background:var(--marvin-bg);border-right:6px solid var(--marvin);border-radius:4px 14px 14px 4px;padding:14px 16px}
+.marvin .say{font-weight:700;font-size:18px}
+.marvin .say span.pos{color:var(--pos)} .marvin .say span.neg{color:var(--neg)}
+.conf{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:15px}
+.conf .bar{flex:1;height:10px;background:#fff;border-radius:5px;overflow:hidden}
+.conf .bar i{display:block;height:100%;background:var(--marvin);width:0;transition:width .6s ease-out}
+.legend{font-size:14px;margin-top:8px;color:var(--muted)}
+.legend b.pos{color:var(--pos)} .legend b.neg{color:var(--neg)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.choices button{padding:18px 8px;font-size:19px;font-weight:700;color:#fff}
+.choices .pos{background:var(--pos)} .choices .neg{background:var(--neg)}
+.choices button:disabled{opacity:.35;cursor:default}
+.verdict{margin-top:14px;padding:13px 16px;border-radius:12px;font-weight:500;background:var(--card);border:2px solid var(--ink)}
+.verdict button{margin-top:10px}
+
+.reveal{background:var(--ink);color:#fff;border-radius:14px;padding:20px;margin:14px 0}
+.reveal .muted{color:#B9BEDD}
+.chart{margin:14px 0 6px}
+.row{display:grid;grid-template-columns:140px 1fr 48px;align-items:center;gap:10px;margin:9px 0;font-size:15.5px}
+.track{height:26px;background:#fff;border-radius:6px;position:relative;overflow:hidden}
+.track i{position:absolute;inset:0 0 0 auto;border-radius:6px}
+.track .zone{position:absolute;top:0;bottom:0;left:0;background:repeating-linear-gradient(135deg,transparent 0 5px,rgba(14,138,125,.28) 5px 10px);border-right:2px dashed var(--pos)}
+.num{font-weight:800;text-align:left;direction:ltr}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.stat{background:var(--card);border-radius:14px;padding:16px}
+.stat .big{font-size:40px;font-weight:800;line-height:1;direction:ltr;text-align:right}
+.stat.warn{background:var(--neg-bg)} .stat.warn .big{color:var(--neg)}
+.note{background:var(--card);border-radius:14px;padding:18px;margin:12px 0}
+ol.q{padding-right:22px;margin:8px 0} ol.q li{margin-bottom:8px}
+.code{font-family:ui-monospace,Menlo,monospace;direction:ltr;text-align:center;font-size:24px;font-weight:700;background:var(--paper);border-radius:10px;padding:12px;margin:8px 0 12px;user-select:all}
+textarea{width:100%;font:15px ui-monospace,Menlo,monospace;padding:12px;border:2px solid var(--ink);border-radius:10px;background:#fff}
+.tally{background:var(--card);border-radius:14px;padding:16px;margin:12px 0}
+.counter{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}
+.counter div{display:flex;align-items:center;gap:10px}
+.counter button{width:44px;height:44px;font-size:24px;font-weight:700;background:var(--paper);color:var(--ink)}
+.counter output{min-width:34px;text-align:center;font-weight:800;font-size:22px}
+@media (max-width:420px){.row{grid-template-columns:108px 1fr 44px;font-size:14px}.two{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header><b>הניסוי של מרווין</b><a href="#class" id="nav">לוח כיתה למרצה</a></header>
+<main id="app"></main>
+
+<script>
+/* ---------- תוכן הניסוי ---------- */
+// [+...+] ביטוי חיובי, [-...-] ביטוי שלילי. t = התשובה הנכונה, ai = ההמלצה של מרווין, c = ביטחון
+const SOLO = [
+ {x:"הזמנו שולחן לשמונה וחיכינו עד תשע. האוכל, כשהגיע סוף סוף, היה דווקא טעים, אבל אחרי שעה של עמידה בכניסה כבר לא היה לנו חשק לכלום. לא נחזור.", t:"neg"},
+ {x:"אוזניות שנראות כמו צעצוע זול ומגיעות בקופסה מעוכה. ואז מחברים אותן, והסאונד פשוט מפיל. חודשיים שאני לא מוריד אותן מהראש.", t:"pos"},
+ {x:"ספר עם רעיון מבריק ופתיחה סוחפת. חבל שמעמוד מאה והלאה הסופר שכח לאן רצה להגיע. סיימתי בכוח, רק כדי לדעת שסיימתי.", t:"neg"},
+ {x:"המלון ישן, המעלית חורקת והשטיחים ראו ימים יפים יותר. מצד שני, הצוות זכר את השמות של הילדים כבר ביום השני, וארוחת הבוקר שווה נסיעה מיוחדת. נהנינו מאוד.", t:"pos"}
+];
+const TEAM = [
+ {x:"[+קפה מצוין+], [+מאפים טריים+] ו[+שירות עם חיוך+]. [-קצת רועש-] בשעות הבוקר, אבל זה חלק מהקסם. [+נחזור בשמחה+].", t:"pos", ai:"pos", c:93},
+ {x:"המסך [-נסדק אחרי שבוע-], בלי שנפל. [+העיצוב יפה+] והמחיר היה [+נוח+], אבל שירות הלקוחות [-לא ענה לשלוש פניות-]. [-ביקשתי החזר-].", t:"neg", ai:"neg", c:88},
+ {x:"[+ממש חוויה בלתי נשכחת+]: שעתיים המתנה למנה ראשונה, והמלצר [+הכי אדיב בעולם+] הסביר לנו שזה [-באשמתנו-], כי הזמנו \"מסובך\". [+ממליץ בחום+] למי שיש לו ערב פנוי ו[-עצבים מברזל-].", t:"neg", ai:"pos", c:62},
+ {x:"[-לא ציפיתי להרבה-] ממסעדה בתחנת דלק, וה[-תפריט נראה עייף-]. אבל החומוס הגיע [+חם ומושלם+], והבעלים [+התעקש שנטעם+] גם מהקינוח. [+יצאנו מחייכים+].", t:"pos", ai:"pos", c:71},
+ {x:"[+הצילומים מרהיבים+], [+הפסקול נהדר+] ו[+השחקנים נותנים הכול+]. ובכל זאת, אחרי שלוש שעות יצאתי מהאולם [-בלי להרגיש כלום-]. יופי של אריזה, [-ריקה מבפנים-].", t:"neg", ai:"pos", c:91},
+ {x:"האפליקציה [-קורסת בכל פעם-] שמנסים לשלם. [+הממשק נקי+] ו[+ההרשמה מהירה+], אבל מה זה שווה אם [-אי אפשר לסיים הזמנה-]? [-מחקתי-].", t:"neg", ai:"neg", c:84},
+ {x:"[-שנאתי-] את חדר הכושר הזה בשבוע הראשון. המאמנת [-לא ויתרה לי-] על אף תרגיל, [-כאב לי כל הגוף-] ו[-רציתי לברוח-]. היום, חצי שנה אחרי, [+חידשתי מנוי לשנתיים+] ו[+הבאתי גם את אחי+].", t:"pos", ai:"neg", c:59},
+ {x:"שואב רובוטי ש[+עושה בדיוק מה שהבטיחו+]. [-נתקע פעם אחת-] מתחת לספה, אבל חוץ מזה [+הבית נקי+] ו[+אני לא נוגע במטאטא+]. [+שווה כל שקל+].", t:"pos", ai:"pos", c:89},
+ {x:"המדריך היה [+מקסים+] וה[+נוף עוצר נשימה+], אבל הטיול [-קוצר בחצי-] בלי הסבר ו[-בלי החזר כספי-]. על חברה שמתנהלת ככה [-אני לא סומך-] פעם שנייה.", t:"neg", ai:"neg", c:66},
+ {x:"[-יקר-]. [-יקר מאוד-], אפילו. אבל זו הכורסה הראשונה שבה [+הגב שלי לא כואב+] אחרי יום עבודה, ו[+אחרי שנה היא נראית כמו חדשה+]. [+לא מתחרט לרגע+].", t:"pos", ai:"pos", c:77}
+];
+const THRESHOLD = 80; // מתחת לסף הזה ההסבר האדפטיבי מציג את שני הצדדים
+const CONDS = {
+  conf:{name:"ביטחון בלבד", desc:"ראיתם את ההמלצה של מרווין ואת רמת הביטחון שלו, בלי שום הסבר."},
+  top1:{name:"הסבר להמלצה", desc:"מרווין סימן בביקורת את הביטויים שתומכים בהמלצה שלו, ורק אותם."},
+  adapt:{name:"הסבר אדפטיבי", desc:"כשמרווין היה בטוח (מעל "+THRESHOLD+"%) הוא סימן רק את מה שתומך בהמלצה. כשלא היה בטוח, הוא סימן גם את הטיעונים לצד השני."}
+};
+const HE = {pos:"חיובית", neg:"שלילית"};
+const LETTER = {conf:"C", top1:"E", adapt:"A"};
+const AI_ACC = TEAM.filter(i=>i.ai===i.t).length / TEAM.length;
+
+/* ---------- מצב ---------- */
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d }catch(e){ return d } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)) }catch(e){} }
+};
+let S = fresh();
+function fresh(cond){
+  const keys = Object.keys(CONDS);
+  return {cond: cond || keys[Math.floor(Math.random()*keys.length)], i:0, soloAns:[], teamAns:[], stage:"intro"};
+}
+const app = document.getElementById("app");
+const nav = document.getElementById("nav");
+const pct = n => Math.round(n*100)+"%";
+
+/* ---------- תצוגות ---------- */
+function render(){
+  if (location.hash==="#class"){ nav.textContent="חזרה לניסוי"; nav.href="#"; return classBoard(); }
+  nav.textContent="לוח כיתה למרצה"; nav.href="#class";
+  ({intro, play, results})[S.stage]();
+  window.scrollTo(0,0);
+}
+
+function intro(){
+  app.innerHTML = `
+  <h1>מרווין הוא AI שקורא ביקורות. תסמכו עליו?</h1>
+  <p>בחמש הדקות הקרובות אתם הנבדקים בניסוי קטן שמשחזר מאמר מ־CHI 2021. המשימה פשוטה: לקרוא ביקורת קצרה ולהחליט אם מי שכתב אותה יצא מרוצה או מאוכזב.</p>
+  <ol class="steps">
+    <li>4 ביקורות לבד, בלי עזרה.</li>
+    <li>10 ביקורות יחד עם מרווין. הוא ממליץ, אתם מחליטים.</li>
+    <li>בסוף תגלו איך הצלחתם כצוות, ומה ראו שאר חברי הכיתה.</li>
+  </ol>
+  <p class="muted small">מרווין טוב, אבל לא מושלם. כל אחד בכיתה מקבל גרסה קצת אחרת שלו, אז אל תציצו למסך של השכנים.</p>
+  <button class="primary" id="go">להתחיל</button>`;
+  document.getElementById("go").onclick = ()=>{ S.stage="play"; render(); };
+}
+
+function markup(text, mode, pred){
+  return text.replace(/\[([+-])(.+?)[+-]\]/g, (_,sign,body)=>{
+    const cls = sign==="+" ? "pos" : "neg";
+    const on = mode==="both" || (mode==="one" && cls===pred);
+    return `<mark class="${cls}${on?" on":""}">${body}</mark>`;
+  });
+}
+
+function play(){
+  const solo = S.i < SOLO.length;
+  const idx = solo ? S.i : S.i - SOLO.length;
+  const item = solo ? SOLO[idx] : TEAM[idx];
+  const total = SOLO.length + TEAM.length;
+  let mode = "none";
+  if (!solo){
+    if (S.cond==="top1") mode="one";
+    if (S.cond==="adapt") mode = item.c >= THRESHOLD ? "one" : "both";
+  }
+  const legend = mode==="one"
+      ? `מרווין סימן את מה ששכנע אותו שהביקורת <b class="${item.ai}">${HE[item.ai]}</b>.`
+      : mode==="both" ? `מרווין לא בטוח, אז הוא סימן טיעונים <b class="pos">בעד</b> וגם <b class="neg">נגד</b>.` : "";
+  app.innerHTML = `
+  <div class="progress"><i style="width:${S.i/total*100}%"></i></div>
+  <div class="phase"><span>${solo?"שלב א׳: לבד":"שלב ב׳: עם מרווין"}</span><span>${S.i+1} מתוך ${total}</span></div>
+  <div class="review">${markup(item.x, mode, item.ai)}</div>
+  ${solo?"":`<div class="marvin">
+     <div class="say">מרווין: נראה לי שהביקורת <span class="${item.ai}">${HE[item.ai]}</span></div>
+     <div class="conf"><span>ביטחון</span><div class="bar"><i id="cbar"></i></div><b>${item.c}%</b></div>
+     ${legend?`<div class="legend">${legend}</div>`:""}
+   </div>`}
+  <div class="choices">
+    <button class="pos" data-a="pos">חיובית</button>
+    <button class="neg" data-a="neg">שלילית</button>
+  </div>
+  <div id="verdict" aria-live="polite"></div>`;
+  if (!solo) requestAnimationFrame(()=>requestAnimationFrame(()=>{ const b=document.getElementById("cbar"); if(b) b.style.width=item.c+"%"; }));
+  app.querySelectorAll(".choices button").forEach(b=> b.onclick = ()=>{
+    const a = b.dataset.a, ok = a===item.t;
+    (solo?S.soloAns:S.teamAns).push(a);
+    app.querySelectorAll(".choices button").forEach(x=>x.disabled=true);
+    let msg = ok ? "נכון." : `לא הפעם. הכותב דירג את החוויה כ${HE[item.t]}.`;
+    if (!solo && item.ai!==item.t) msg += ok ? " מרווין טעה כאן, ואתם לא הלכתם אחריו." : " גם מרווין טעה כאן.";
+    const last = S.i===total-1;
+    const v = document.getElementById("verdict");
+    v.innerHTML = `<div class="verdict">${msg}<br><button class="primary" id="next">${last?"לתוצאות":"לביקורת הבאה"}</button></div>`;
+    const n = document.getElementById("next");
+    n.onclick = ()=>{ S.i++; if (S.i>=total) S.stage="results"; render(); };
+    n.focus();
+  });
+}
+
+function bar(label, v, color, zoneFrom){
+  return `<div class="row"><span>${label}</span>
+   <div class="track">${zoneFrom!=null?`<span class="zone" style="width:${(1-zoneFrom)*100}%"></span>`:""}<i style="width:${v*100}%;background:${color}"></i></div>
+   <span class="num">${pct(v)}</span></div>`;
+}
+
+function results(){
+  const solo = S.soloAns.filter((a,i)=>a===SOLO[i].t).length / SOLO.length;
+  const team = S.teamAns.filter((a,i)=>a===TEAM[i].t).length / TEAM.length;
+  const right = TEAM.map((it,i)=>({it,a:S.teamAns[i]})).filter(o=>o.it.ai===o.it.t);
+  const wrong = TEAM.map((it,i)=>({it,a:S.teamAns[i]})).filter(o=>o.it.ai!==o.it.t);
+  const agreeRight = right.filter(o=>o.a===o.it.ai).length;
+  const agreeWrong = wrong.filter(o=>o.a===o.it.ai).length;
+  const best = Math.max(solo, AI_ACC);
+  const verdict = team>best
+    ? "הצוות עקף גם אתכם וגם את מרווין. זה בדיוק מה שהמאמר מכנה ביצועים משלימים."
+    : team===best ? "הצוות השתווה לטוב מבין השניים, אבל לא עקף אותו. השלם עוד לא עולה על סך חלקיו."
+    : "הצוות יצא פחות טוב מהשחקן החזק שבו. במצב כזה עדיף היה לתת לאחד מכם להחליט לבד.";
+  const c = CONDS[S.cond];
+  const code = ["MRV", LETTER[S.cond], Math.round(solo*SOLO.length), Math.round(team*TEAM.length), agreeRight, agreeWrong].join("-");
+  app.innerHTML = `
+  <h1>האם השלם עלה על סך חלקיו?</h1>
+  <div class="chart">
+    ${bar("אתם לבד", solo, "var(--ink)")}
+    ${bar("מרווין לבד", AI_ACC, "var(--marvin)")}
+    ${bar("אתם + מרווין", team, "var(--pos)", best)}
+  </div>
+  <p class="small muted">האזור המקווקו הוא האזור המשלים: דיוק גבוה יותר מזה של כל אחד מכם בנפרד. (4 ביקורות לבד הן מדגם קטן, אז קחו את השורה הראשונה בעירבון מוגבל.)</p>
+  <p><b>${verdict}</b></p>
+
+  <div class="two">
+    <div class="stat"><div class="big">${agreeRight}/${right.length}</div><p class="small">פעמים שהסכמתם עם מרווין כשהוא צדק</p></div>
+    <div class="stat warn"><div class="big">${agreeWrong}/${wrong.length}</div><p class="small">פעמים שהלכתם אחריו כשהוא טעה</p></div>
+  </div>
+
+  <div class="note" style="border:2px solid var(--ink)">
+    <h3>שלחו את התוצאה שלכם לכיתה</h3>
+    <p class="small">העתיקו את הקוד והדביקו אותו בקבוצת הקורס. המרצה יאסוף את כל הקודים ויציג את התמונה הכיתתית.</p>
+    <div class="code" id="code">${code}</div>
+    <button class="primary" id="copy">להעתיק את הקוד</button>
+  </div>
+
+  <div class="reveal">
+    <p class="muted small">הקבוצה שלכם בניסוי</p>
+    <h3 style="font-size:24px">${c.name}</h3>
+    <p>${c.desc}</p>
+    <p class="muted small" style="margin:0">שאר הכיתה חולקה באקראי לשלוש קבוצות: ביטחון בלבד, הסבר להמלצה, הסבר אדפטיבי.</p>
+  </div>
+
+  <h2>מה מצאו במאמר</h2>
+  <p class="small muted">המאמר של Bansal ועמיתים, <bdi dir="ltr">“Does the Whole Exceed its Parts?”</bdi>, הוצג בכנס <bdi>CHI 2021</bdi> וכלל 1,626 משתתפים בשלוש משימות.</p>
+  <div class="chart">
+    ${bar("אדם לבד", .82, "var(--ink)")}
+    ${bar("AI לבד", .84, "var(--marvin)")}
+    ${bar("צוות + ביטחון", .89, "var(--pos)", .84)}
+    ${bar("צוות + הסבר", .88, "var(--pos)", .84)}
+  </div>
+  <p class="small muted">דיוק ממוצע במשימת ביקורות הבירה.</p>
+  <div class="note">
+    <p><b>העזרה של ה־AI הועילה, ההסבר לא הוסיף.</b> הצוותים עקפו גם את האדם וגם את המודל, אבל הצגת הסבר לא שיפרה את הדיוק מעבר להצגת רמת הביטחון בלבד.</p>
+    <p><b>הסבר משכנע, גם כשהוא שגוי.</b> ההסברים הגדילו את הסיכוי שאנשים יקבלו את ההמלצה, בלי קשר לשאלה אם היא נכונה. כשה־AI צדק זה עזר, כשטעה זה הזיק, והשינוי נטו היה זניח.</p>
+    <p style="margin:0"><b>הסבר אדפטיבי הוא כיוון, לא פתרון.</b> הוא הפחית הסכמה עיוורת כשהמודל לא היה בטוח, אבל לא שיפר את הדיוק הסופי באופן מובהק.</p>
+  </div>
+
+  <h2>לדיון בכיתה</h2>
+  <ol class="q">
+    <li>בביקורת על הסרט מרווין טעה בביטחון של 91%. מה זה אומר על הסבר אדפטיבי שנשען על רמת הביטחון של המודל?</li>
+    <li>בניסוי המקורי בחרו בכוונה משימות שבהן האדם וה־AI מדויקים באותה מידה. למה זה תנאי הכרחי לביצועים משלימים, ואיפה בארגון שלכם הוא מתקיים?</li>
+    <li>אם הסבר מגדיל אמון ולא דיוק, מה צריך להופיע במסך של מי שמקבל החלטה בסיוע AI?</li>
+  </ol>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
+    <button class="ghost" id="again">לשחק שוב בקבוצה אחרת</button>
+  </div>`;
+  document.getElementById("copy").onclick = async e=>{
+    try{ await navigator.clipboard.writeText(code); e.target.textContent="הקוד הועתק"; }
+    catch(err){ const r=document.createRange(); r.selectNodeContents(document.getElementById("code")); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); e.target.textContent="הקוד מסומן, העתיקו אותו ידנית"; }
+  };
+  document.getElementById("again").onclick = ()=>{
+    const keys = Object.keys(CONDS);
+    S = fresh(keys[(keys.indexOf(S.cond)+1)%keys.length]); S.stage="play"; render();
+  };
+}
+
+/* ---------- לוח כיתה: איסוף קודים ---------- */
+function parseCodes(text){
+  const back = {C:"conf", E:"top1", A:"adapt"}, out = [];
+  const re = /MRV-([CEA])-(\d)-(\d{1,2})-(\d)-(\d)/g; let m;
+  while ((m = re.exec(text))){
+    const [solo, team, ar, aw] = m.slice(2).map(Number);
+    if (solo<=SOLO.length && team<=TEAM.length && ar<=7 && aw<=3) out.push({cond:back[m[1]], solo, team, ar, aw});
+  }
+  return out;
+}
+function classBoard(){
+  const text = store.get("marvin-codes", "");
+  const R = parseCodes(text);
+  const avg = (arr, f, d) => arr.length ? arr.reduce((s,r)=>s+f(r),0)/arr.length/d : 0;
+  const by = k => R.filter(r=>r.cond===k);
+  const keys = Object.keys(CONDS);
+  const colors = {conf:"var(--ink)", top1:"var(--neg)", adapt:"var(--marvin)"};
+  const soloAll = avg(R, r=>r.solo, SOLO.length);
+  const best = Math.max(soloAll, AI_ACC);
+  const group = (f, d, zone) => keys.map(k=>bar(`${CONDS[k].name} (${by(k).length})`, avg(by(k), f, d), colors[k], zone)).join("");
+  app.innerHTML = `
+  <h1>התוצאות של כל הכיתה</h1>
+  <p>בסוף הניסוי כל סטודנט מקבל קוד קצר ומדביק אותו בקבוצת הקורס. העתיקו את כל ההודעות מהקבוצה והדביקו אותן כאן. אין צורך לנקות שמות, שעות או טקסט אחר.</p>
+  <textarea id="codes" rows="5" dir="ltr" placeholder="MRV-E-3-8-6-2 ...">${text.replace(/</g,"&lt;")}</textarea>
+  <div style="display:flex;gap:10px;margin:10px 0 4px">
+    <button class="primary" id="load">לעדכן את הלוח</button>
+    <button class="ghost" id="reset">לנקות</button>
+  </div>
+  <p class="small muted" aria-live="polite">${R.length ? `נקלטו ${R.length} תוצאות.` : "עדיין לא נקלטו תוצאות."}</p>
+  ${R.length ? `
+  <h2>דיוק הצוות, לפי קבוצה</h2>
+  <div class="chart">
+    ${bar("סטודנטים לבד", soloAll, "var(--muted)")}
+    ${bar("מרווין לבד", AI_ACC, "var(--muted)")}
+    ${group(r=>r.team, TEAM.length, best)}
+  </div>
+  <p class="small muted">בסוגריים: מספר הסטודנטים בקבוצה. האזור המקווקו הוא האזור המשלים, מעל הטוב מבין האדם וה־AI. לפי המאמר צפוי שכל הקבוצות ייכנסו אליו, בלי הבדל מובהק ביניהן.</p>
+  <h2>הלכו אחרי מרווין כשהוא טעה</h2>
+  <div class="chart">${group(r=>r.aw, 3)}</div>
+  <p class="small muted">שיעור הטעויות של מרווין (3 בסך הכול) שהסטודנטים אימצו. לפי המאמר צפוי שקבוצת "הסבר להמלצה" תוביל.</p>
+  <h2>הסכימו עם מרווין כשהוא צדק</h2>
+  <div class="chart">${group(r=>r.ar, 7)}</div>
+  <p class="small muted">אם הסבר מעלה את שני הגרפים האחרונים יחד, הוא מגדיל אמון ולא כושר הבחנה. זו הטענה המרכזית של המאמר.</p>` : ""}`;
+  document.getElementById("load").onclick = ()=>{ store.set("marvin-codes", document.getElementById("codes").value); classBoard(); };
+  document.getElementById("reset").onclick = ()=>{ store.set("marvin-codes", ""); classBoard(); };
+}
+
+window.addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html>
