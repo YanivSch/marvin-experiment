@@ -6,12 +6,17 @@ const GROUPS = { C: 'ביטחון בלבד', E: 'הסבר להמלצה', A: 'ה�
 function doPost(e) {
   const raw = (e.parameter && e.parameter.code) ||
               (e.postData && e.postData.contents) || '';
-  const m = String(raw).match(/MRV-([CEA])-(\d)-(\d{1,2})-(\d)-(\d)/);
+  // גרסה 2 (ביקורות + גיוס): MRV2-קבוצה-לבד(0-6)-עם מרווין(0-14)-הסכים כשצדק(0-10)-הלך אחריו כשטעה(0-4)
+  // גרסה 1 (ביקורות בלבד):  MRV-קבוצה-לבד(0-4)-עם מרווין(0-10)-הסכים כשצדק(0-7)-הלך אחריו כשטעה(0-3)
+  const s = String(raw);
+  const v2 = s.match(/MRV2-([CEA])-(\d)-(\d{1,2})-(\d{1,2})-(\d)/);
+  const m = v2 || s.match(/MRV-([CEA])-(\d)-(\d{1,2})-(\d)-(\d)/);
   if (!m) return reply('bad code');
 
+  const max = v2 ? [6, 14, 10, 4] : [4, 10, 7, 3];
   const solo = Number(m[2]), team = Number(m[3]);
   const agreedRight = Number(m[4]), followedWrong = Number(m[5]);
-  if (solo > 4 || team > 10 || agreedRight > 7 || followedWrong > 3) {
+  if (solo > max[0] || team > max[1] || agreedRight > max[2] || followedWrong > max[3]) {
     return reply('bad code');
   }
 
