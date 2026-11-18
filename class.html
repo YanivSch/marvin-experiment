@@ -106,12 +106,12 @@ details{margin-top:28px} summary{cursor:pointer;font-weight:500}
   <details>
     <summary>הדבקה ידנית של קודים (גיבוי אם הגיליון לא נטען)</summary>
     <p class="small muted">הדביקו כאן את עמודת הקודים מהגיליון או הודעות מקבוצת הקורס. כל עוד יש כאן טקסט, הלוח מציג אותו במקום את הגיליון.</p>
-    <textarea id="manual" rows="5" dir="ltr" placeholder="MRV-E-3-8-6-2 ..."></textarea>
+    <textarea id="manual" rows="5" dir="ltr" placeholder="MRV2-E-5-11-8-2 ..."></textarea>
   </details>
 </main>
 <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbwUzo2U8YDiKNB8abNtQK_Eu7cPN4w-n7zlg15_86dtgA35QXARrqDfLq3vJF4VfPFyAw/exec";
-const SOLO_N = 4, TEAM_N = 10, RIGHT_N = 7, WRONG_N = 3, AI_ACC = 0.7;
+const SOLO_N = 6, TEAM_N = 14, RIGHT_N = 10, WRONG_N = 4, AI_ACC = 10/14;
 const CONDS = {conf:"ביטחון בלבד", top1:"הסבר להמלצה", adapt:"הסבר אדפטיבי"};
 const COLORS = {conf:"var(--ink)", top1:"var(--neg)", adapt:"var(--marvin)"};
 const REFRESH_MS = 10000;
@@ -122,12 +122,12 @@ const store = {
   set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)) }catch(e){} }
 };
 let rows = [];            // שורות מהגיליון: {t, code}
-let cutoff = store.get("marvin-cutoff", 0);
+let cutoff = store.get("marvin2-cutoff", 0);
 let lastOk = 0, seq = 0;
 
 function parseCodes(text){
   const back = {C:"conf", E:"top1", A:"adapt"}, out = [];
-  const re = /MRV-([CEA])-(\d)-(\d{1,2})-(\d)-(\d)/g; let m;
+  const re = /MRV2-([CEA])-(\d)-(\d{1,2})-(\d{1,2})-(\d)/g; let m;
   while ((m = re.exec(text))){
     const [solo, team, ar, aw] = m.slice(2).map(Number);
     if (solo<=SOLO_N && team<=TEAM_N && ar<=RIGHT_N && aw<=WRONG_N) out.push({cond:back[m[1]], solo, team, ar, aw});
@@ -159,10 +159,10 @@ function render(){
     ${bar("מרווין לבד", AI_ACC, "var(--muted)")}
     ${group(r=>r.team, TEAM_N, best)}
   </div>
-  <p class="small muted">בסוגריים: מספר הסטודנטים בקבוצה. האזור המקווקו הוא האזור המשלים, מעל הטוב מבין האדם וה־AI.</p>
+  <p class="small muted">שתי המשימות יחד, ביקורות וגיוס. בסוגריים: מספר הסטודנטים בקבוצה. האזור המקווקו הוא האזור המשלים, מעל הטוב מבין האדם וה־AI.</p>
   <h2>הלכו אחרי מרווין כשהוא טעה</h2>
   <div class="chart">${group(r=>r.aw, WRONG_N)}</div>
-  <p class="small muted">שיעור הטעויות של מרווין (3 בסך הכול) שהסטודנטים אימצו.</p>
+  <p class="small muted">שיעור הטעויות של מרווין (4 בסך הכול, 2 בכל משימה) שהסטודנטים אימצו.</p>
   <h2>הסכימו עם מרווין כשהוא צדק</h2>
   <div class="chart">${group(r=>r.ar, RIGHT_N)}</div>
   <p class="small muted">אם הסבר מעלה את שני הגרפים האחרונים יחד, הוא מגדיל אמון ולא כושר הבחנה.</p>`;
@@ -191,8 +191,8 @@ function load(){
 }
 
 $("refresh").onclick = load;
-$("cutoff").onclick = () => { cutoff = Date.now(); store.set("marvin-cutoff", cutoff); render(); };
-$("showall").onclick = () => { cutoff = 0; store.set("marvin-cutoff", 0); render(); };
+$("cutoff").onclick = () => { cutoff = Date.now(); store.set("marvin2-cutoff", cutoff); render(); };
+$("showall").onclick = () => { cutoff = 0; store.set("marvin2-cutoff", 0); render(); };
 $("manual").oninput = render;
 render(); load(); setInterval(load, REFRESH_MS);
 </script>

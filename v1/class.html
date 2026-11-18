@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>לוח כיתה: הניסוי של מרווין</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E9ECF5; --card:#fff; --ink:#1A1D3A; --muted:#5C6185;
+  --pos:#0E8A7D; --pos-bg:#D3F0EB; --neg:#BF2F68; --neg-bg:#F9D9E5;
+  --marvin:#E9A823; --marvin-bg:#FFF4D6; --line:#CDD2E4;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:Rubik,system-ui,sans-serif;font-size:17px;line-height:1.55}
+header{background:var(--ink);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+header b{font-weight:800;font-size:18px}
+header a{color:#fff;font-size:14px;opacity:.85}
+main{max-width:660px;margin:0 auto;padding:22px 18px 60px}
+h1{font-size:clamp(30px,7vw,46px);line-height:1.12;font-weight:800;margin:18px 0 14px;letter-spacing:-.01em}
+h2{font-size:24px;line-height:1.2;font-weight:800;margin:34px 0 10px}
+h3{font-size:18px;margin:0 0 6px;font-weight:700}
+p{margin:0 0 12px}
+.muted{color:var(--muted)}
+.small{font-size:14.5px}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px}
+button:focus-visible,a:focus-visible{outline:3px solid var(--marvin);outline-offset:2px}
+.primary{background:var(--ink);color:#fff;padding:15px 24px;font-weight:700;font-size:18px;width:100%}
+.ghost{background:transparent;color:var(--ink);border:2px solid var(--ink);padding:11px 18px;font-weight:500}
+.steps{padding:0;margin:16px 0 22px;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;padding:10px 46px 10px 0;position:relative;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;right:0;top:9px;width:30px;height:30px;border-radius:50%;background:var(--marvin);font-weight:800;display:grid;place-items:center}
+
+.progress{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.progress i{display:block;height:100%;background:var(--ink);transition:width .3s}
+.phase{display:flex;justify-content:space-between;font-size:14.5px;color:var(--muted);margin-bottom:14px}
+.review{background:var(--card);border-radius:14px;padding:22px 20px;font-family:"Frank Ruhl Libre",serif;font-size:21px;line-height:1.7;min-height:150px}
+.review mark{background:none;color:inherit;border-radius:4px;padding:1px 3px}
+.review mark.pos.on{background:var(--pos-bg);box-shadow:inset 0 -2px 0 var(--pos)}
+.review mark.neg.on{background:var(--neg-bg);box-shadow:inset 0 -2px 0 var(--neg)}
+.marvin{margin-top:12px;background:var(--marvin-bg);border-right:6px solid var(--marvin);border-radius:4px 14px 14px 4px;padding:14px 16px}
+.marvin .say{font-weight:700;font-size:18px}
+.marvin .say span.pos{color:var(--pos)} .marvin .say span.neg{color:var(--neg)}
+.conf{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:15px}
+.conf .bar{flex:1;height:10px;background:#fff;border-radius:5px;overflow:hidden}
+.conf .bar i{display:block;height:100%;background:var(--marvin);width:0;transition:width .6s ease-out}
+.legend{font-size:14px;margin-top:8px;color:var(--muted)}
+.legend b.pos{color:var(--pos)} .legend b.neg{color:var(--neg)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.choices button{padding:18px 8px;font-size:19px;font-weight:700;color:#fff}
+.choices .pos{background:var(--pos)} .choices .neg{background:var(--neg)}
+.choices button:disabled{opacity:.35;cursor:default}
+.primary:disabled{opacity:.55;cursor:default}
+.verdict{margin-top:14px;padding:13px 16px;border-radius:12px;font-weight:500;background:var(--card);border:2px solid var(--ink)}
+.verdict button{margin-top:10px}
+
+.reveal{background:var(--ink);color:#fff;border-radius:14px;padding:20px;margin:14px 0}
+.reveal .muted{color:#B9BEDD}
+.chart{margin:14px 0 6px}
+.row{display:grid;grid-template-columns:140px 1fr 48px;align-items:center;gap:10px;margin:9px 0;font-size:15.5px}
+.track{height:26px;background:#fff;border-radius:6px;position:relative;overflow:hidden}
+.track i{position:absolute;inset:0 0 0 auto;border-radius:6px}
+.track .zone{position:absolute;top:0;bottom:0;left:0;background:repeating-linear-gradient(135deg,transparent 0 5px,rgba(14,138,125,.28) 5px 10px);border-right:2px dashed var(--pos)}
+.num{font-weight:800;text-align:left;direction:ltr}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.stat{background:var(--card);border-radius:14px;padding:16px}
+.stat .big{font-size:40px;font-weight:800;line-height:1;direction:ltr;text-align:right}
+.stat.warn{background:var(--neg-bg)} .stat.warn .big{color:var(--neg)}
+.note{background:var(--card);border-radius:14px;padding:18px;margin:12px 0}
+ol.q{padding-right:22px;margin:8px 0} ol.q li{margin-bottom:8px}
+.code{font-family:ui-monospace,Menlo,monospace;direction:ltr;text-align:center;font-size:24px;font-weight:700;background:var(--paper);border-radius:10px;padding:12px;margin:8px 0 12px;user-select:all}
+textarea{width:100%;font:15px ui-monospace,Menlo,monospace;padding:12px;border:2px solid var(--ink);border-radius:10px;background:#fff}
+.tally{background:var(--card);border-radius:14px;padding:16px;margin:12px 0}
+.counter{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}
+.counter div{display:flex;align-items:center;gap:10px}
+.counter button{width:44px;height:44px;font-size:24px;font-weight:700;background:var(--paper);color:var(--ink)}
+.counter output{min-width:34px;text-align:center;font-weight:800;font-size:22px}
+@media (max-width:420px){.row{grid-template-columns:108px 1fr 44px;font-size:14px}.two{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+main{max-width:980px}
+.status{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:10px 0 6px}
+.status button{width:auto;padding:11px 18px;font-size:16px}
+.count{font-size:64px;font-weight:800;line-height:1;direction:ltr}
+.err{background:var(--neg-bg);border-radius:12px;padding:14px 16px;margin:12px 0}
+details{margin-top:28px} summary{cursor:pointer;font-weight:500}
+@media (min-width:900px){.row{grid-template-columns:230px 1fr 60px;font-size:19px}.track{height:34px}}
+</style>
+</head>
+<body>
+<header><b>הניסוי של מרווין: לוח כיתה</b></header>
+<main>
+  <h1>התוצאות של כל הכיתה</h1>
+  <div class="status">
+    <div><div class="count" id="count">0</div><div class="small muted">תוצאות שנקלטו</div></div>
+    <button class="primary" id="refresh">לרענן עכשיו</button>
+    <button class="ghost" id="cutoff">להתחיל ספירה מעכשיו</button>
+    <button class="ghost" id="showall" hidden>להציג את כל השורות</button>
+  </div>
+  <p class="small muted" id="state" aria-live="polite">טוען את הגיליון...</p>
+  <div id="error"></div>
+  <div id="charts"></div>
+  <details>
+    <summary>הדבקה ידנית של קודים (גיבוי אם הגיליון לא נטען)</summary>
+    <p class="small muted">הדביקו כאן את עמודת הקודים מהגיליון או הודעות מקבוצת הקורס. כל עוד יש כאן טקסט, הלוח מציג אותו במקום את הגיליון.</p>
+    <textarea id="manual" rows="5" dir="ltr" placeholder="MRV-E-3-8-6-2 ..."></textarea>
+  </details>
+</main>
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwUzo2U8YDiKNB8abNtQK_Eu7cPN4w-n7zlg15_86dtgA35QXARrqDfLq3vJF4VfPFyAw/exec";
+const SOLO_N = 4, TEAM_N = 10, RIGHT_N = 7, WRONG_N = 3, AI_ACC = 0.7;
+const CONDS = {conf:"ביטחון בלבד", top1:"הסבר להמלצה", adapt:"הסבר אדפטיבי"};
+const COLORS = {conf:"var(--ink)", top1:"var(--neg)", adapt:"var(--marvin)"};
+const REFRESH_MS = 10000;
+const $ = id => document.getElementById(id);
+const pct = n => Math.round(n*100)+"%";
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d }catch(e){ return d } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)) }catch(e){} }
+};
+let rows = [];            // שורות מהגיליון: {t, code}
+let cutoff = store.get("marvin-cutoff", 0);
+let lastOk = 0, seq = 0;
+
+function parseCodes(text){
+  const back = {C:"conf", E:"top1", A:"adapt"}, out = [];
+  const re = /MRV-([CEA])-(\d)-(\d{1,2})-(\d)-(\d)/g; let m;
+  while ((m = re.exec(text))){
+    const [solo, team, ar, aw] = m.slice(2).map(Number);
+    if (solo<=SOLO_N && team<=TEAM_N && ar<=RIGHT_N && aw<=WRONG_N) out.push({cond:back[m[1]], solo, team, ar, aw});
+  }
+  return out;
+}
+function bar(label, v, color, zoneFrom){
+  return `<div class="row"><span>${label}</span>
+   <div class="track">${zoneFrom!=null?`<span class="zone" style="width:${(1-zoneFrom)*100}%"></span>`:""}<i style="width:${v*100}%;background:${color}"></i></div>
+   <span class="num">${pct(v)}</span></div>`;
+}
+function render(){
+  const manual = $("manual").value.trim();
+  const text = manual || rows.filter(r => r.t >= cutoff).map(r => r.code).join("\n");
+  const R = parseCodes(text);
+  $("count").textContent = R.length;
+  $("showall").hidden = !cutoff;
+  const avg = (arr, f, d) => arr.length ? arr.reduce((s,r)=>s+f(r),0)/arr.length/d : 0;
+  const by = k => R.filter(r=>r.cond===k);
+  const keys = Object.keys(CONDS);
+  if (!R.length){ $("charts").innerHTML = '<p class="muted">עדיין אין תוצאות להצגה.</p>'; return; }
+  const soloAll = avg(R, r=>r.solo, SOLO_N);
+  const best = Math.max(soloAll, AI_ACC);
+  const group = (f, d, zone) => keys.map(k=>bar(`${CONDS[k]} (${by(k).length})`, avg(by(k), f, d), COLORS[k], zone)).join("");
+  $("charts").innerHTML = `
+  <h2>דיוק הצוות, לפי קבוצה</h2>
+  <div class="chart">
+    ${bar("סטודנטים לבד", soloAll, "var(--muted)")}
+    ${bar("מרווין לבד", AI_ACC, "var(--muted)")}
+    ${group(r=>r.team, TEAM_N, best)}
+  </div>
+  <p class="small muted">בסוגריים: מספר הסטודנטים בקבוצה. האזור המקווקו הוא האזור המשלים, מעל הטוב מבין האדם וה־AI.</p>
+  <h2>הלכו אחרי מרווין כשהוא טעה</h2>
+  <div class="chart">${group(r=>r.aw, WRONG_N)}</div>
+  <p class="small muted">שיעור הטעויות של מרווין (3 בסך הכול) שהסטודנטים אימצו.</p>
+  <h2>הסכימו עם מרווין כשהוא צדק</h2>
+  <div class="chart">${group(r=>r.ar, RIGHT_N)}</div>
+  <p class="small muted">אם הסבר מעלה את שני הגרפים האחרונים יחד, הוא מגדיל אמון ולא כושר הבחנה.</p>`;
+}
+
+/* קריאה מהגיליון ב-JSONP: Apps Script מחזיר קריאה לפונקציה, בלי תלות ב-CORS */
+function load(){
+  const cb = "__marvin" + (++seq);
+  const tag = document.createElement("script");
+  const done = () => { clearTimeout(timer); delete window[cb]; tag.remove(); };
+  const fail = why => { done();
+    $("error").innerHTML = `<div class="err"><b>הגיליון לא נטען.</b> ${why} אפשר להדביק קודים ידנית למטה.</div>`;
+    $("state").textContent = lastOk ? "מוצג המצב האחרון שנטען." : "";
+  };
+  const timer = setTimeout(()=>fail("לא התקבלה תשובה תוך 15 שניות."), 15000);
+  window[cb] = data => { done();
+    if (!data || !Array.isArray(data.rows)) return fail("התשובה מהסקריפט אינה בפורמט הצפוי. ודאו שפרסתם גרסה חדשה של הסקריפט.");
+    rows = data.rows.map(r => ({t:Number(r.t)||0, code:String(r.code||"")}));
+    lastOk = Date.now(); $("error").innerHTML = "";
+    $("state").textContent = "עודכן ב־" + new Date().toLocaleTimeString("he-IL") + ". מתרענן כל 10 שניות.";
+    render();
+  };
+  tag.onerror = () => fail("ודאו שהסקריפט פרוס עם גישה ל-Anyone ושפרסתם גרסה חדשה שלו.");
+  tag.src = SHEET_URL + "?action=list&callback=" + cb + "&_=" + Date.now();
+  document.head.appendChild(tag);
+}
+
+$("refresh").onclick = load;
+$("cutoff").onclick = () => { cutoff = Date.now(); store.set("marvin-cutoff", cutoff); render(); };
+$("showall").onclick = () => { cutoff = 0; store.set("marvin-cutoff", 0); render(); };
+$("manual").oninput = render;
+render(); load(); setInterval(load, REFRESH_MS);
+</script>
+</body>
+</html>
