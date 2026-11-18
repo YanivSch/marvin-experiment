@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ניסוי המבוך</title>
+<style>
+  :root { --blue:#007acc; --ink:#1a1a1a; --muted:#666; --bg:#f4f6f8; --card:#fff; --path:#e0218a; --start:#0e8a5f; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:640px; margin:0 auto; padding:16px; }
+  .card { background:var(--card); border-radius:16px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:16px; }
+  h1 { font-size:26px; margin:0 0 8px; color:var(--blue); }
+  h2 { font-size:20px; margin:0 0 6px; }
+  p, li { line-height:1.55; }
+  .muted { color:var(--muted); font-size:14px; }
+  button { font:inherit; border:0; border-radius:10px; padding:12px 18px; cursor:pointer; }
+  .primary { background:var(--blue); color:#fff; font-weight:bold; width:100%; font-size:18px; }
+  .primary:disabled { opacity:.5; cursor:default; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; font-size:14px; }
+  .stage { font-weight:bold; }
+  .timer { height:6px; background:#ddd; border-radius:3px; overflow:hidden; margin-bottom:10px; }
+  .timer > div { height:100%; background:var(--blue); width:100%; }
+  .timer.low > div { background:#c0392b; }
+  canvas { display:block; margin:0 auto; touch-action:manipulation; background:#fff; border-radius:8px; }
+  .ai { background:#eef6fc; border:1px solid #b9dcf3; border-radius:12px; padding:12px; margin:10px 0; }
+  .ai b { color:var(--blue); }
+  .steps { max-height:150px; overflow:auto; background:#fff; border-radius:8px; padding:8px; margin-top:8px; font-size:14px; line-height:1.9; border:1px solid #dde; }
+  .steps span { display:inline-block; background:#f1f1f1; border-radius:6px; padding:0 7px; margin:2px; white-space:nowrap; }
+  .exits { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
+  .exits button { color:#fff; font-size:20px; font-weight:bold; padding:14px 0; }
+  .badge { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; color:#fff; font-weight:bold; font-size:14px; }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  th, td { padding:8px 6px; border-bottom:1px solid #eee; text-align:right; }
+  th { color:var(--muted); font-weight:normal; font-size:13px; }
+  .code { font-family:Consolas,monospace; font-size:17px; background:#f1f1f1; padding:10px; border-radius:8px; direction:ltr; text-align:center; word-break:break-all; user-select:all; }
+  .row { display:flex; gap:8px; margin-top:10px; }
+  .row button { flex:1; }
+  .ghost { background:#e9eef2; color:var(--ink); }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+
+<!-- פתיחה -->
+<section id="intro" class="card">
+  <h1>ניסוי המבוך</h1>
+  <p>בכל מבוך יש נקודת התחלה ירוקה במרכז וארבע יציאות מסומנות. <b>רק יציאה אחת מחוברת לנקודת ההתחלה.</b> המשימה: למצוא אותה.</p>
+  <p>יש שני מבוכים: קטן (10 על 10) וגדול (50 על 50). בכל אחד שלושה שלבים:</p>
+  <ol>
+    <li><b>לבד:</b> בלי עזרה.</li>
+    <li><b>הסבר מילולי:</b> עוזר AI ממליץ על יציאה ומפרט את הדרך במילים.</li>
+    <li><b>סימון על המבוך:</b> עוזר AI ממליץ על יציאה ומסמן את הדרך על המבוך.</li>
+  </ol>
+  <p>ה-AI לא תמיד צודק. ההחלטה שלכם.</p>
+  <p class="muted">16 מבוכים, כ-8 דקות. בכל מבוך יש זמן מוגבל: 25 שניות לקטן ו-60 לגדול. לא מקבלים משוב עד הסוף.</p>
+  <button class="primary" id="startBtn">מתחילים</button>
+</section>
+
+<!-- מעבר בין שלבים -->
+<section id="between" class="card hidden">
+  <h2 id="betweenTitle"></h2>
+  <p id="betweenText"></p>
+  <button class="primary" id="continueBtn">ממשיכים</button>
+</section>
+
+<!-- ניסוי -->
+<section id="trial" class="card hidden">
+  <div class="topbar"><span class="stage" id="stageLabel"></span><span class="muted" id="trialLabel"></span></div>
+  <div class="timer" id="timer"><div id="timerFill"></div></div>
+  <canvas id="maze"></canvas>
+  <div class="ai hidden" id="aiBox">
+    <div>המלצת ה-AI: <b id="aiPick"></b></div>
+    <div class="muted" id="aiHint"></div>
+    <div class="steps hidden" id="aiSteps"></div>
+  </div>
+  <div class="muted" style="margin-top:10px">לאיזו יציאה מגיעים מנקודת ההתחלה?</div>
+  <div class="exits" id="exitBtns"></div>
+</section>
+
+<!-- סיום -->
+<section id="done" class="card hidden">
+  <h1>סיימתם, תודה!</h1>
+  <table id="summary"></table>
+  <p class="muted" id="followNote"></p>
+  <p style="margin-bottom:6px">קוד התוצאה שלכם:</p>
+  <div class="code" id="code"></div>
+  <div class="row">
+    <button class="primary" id="sendBtn">שליחה ללוח הכיתה</button>
+  </div>
+  <div class="row">
+    <button class="ghost" id="copyBtn">העתקת הקוד</button>
+  </div>
+  <p class="muted" id="sendStatus"></p>
+</section>
+
+</main>
+<script>
+// ===== הגדרות =====
+// כתובת ה-Web app של הגיליון (apps-script.gs). ריק = רק העתקת קוד והדבקה בקבוצת הקורס.
+const SHEET_URL = "";
+
+const EXIT_NAMES = ["א", "ב", "ג", "ד"];
+const EXIT_COLORS = ["#007acc", "#e67e22", "#8e44ad", "#16a085"];
+const SIZES = {
+  small: { n: 10, label: "מבוך קטן (10×10)", seconds: 25 },
+  large: { n: 50, label: "מבוך גדול (50×50)", seconds: 60 }
+};
+// השלבים לפי הסדר. wrong = מספר הניסיון (מ-0) שבו ה-AI טועה בכוונה.
+const STAGES = [
+  { size: "small", mode: "solo",      trials: 2 },
+  { size: "small", mode: "verbal",    trials: 3, wrong: 1 },
+  { size: "small", mode: "highlight", trials: 3, wrong: 2 },
+  { size: "large", mode: "solo",      trials: 2 },
+  { size: "large", mode: "verbal",    trials: 3, wrong: 2 },
+  { size: "large", mode: "highlight", trials: 3, wrong: 1 }
+];
+const MODE_LABEL = { solo: "לבד", verbal: "הסבר מילולי", highlight: "סימון על המבוך" };
+
+// ===== מחולל מבוכים עם זרע קבוע: כל הכיתה מקבלת את אותם מבוכים =====
+function rng(seed) {
+  return function () {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const DIRS = [ // N E S W
+  { dr: -1, dc: 0, bit: 1, opp: 4, word: "למעלה", arrow: "↑" },
+  { dr: 0, dc: 1, bit: 2, opp: 8, word: "ימינה", arrow: "→" },
+  { dr: 1, dc: 0, bit: 4, opp: 1, word: "למטה", arrow: "↓" },
+  { dr: 0, dc: -1, bit: 8, opp: 2, word: "שמאלה", arrow: "←" }
+];
+
+function makeMaze(n, seed) {
+  const rand = rng(seed);
+  // walls[r][c]: ביטים של קירות קיימים (1=צפון 2=מזרח 4=דרום 8=מערב)
+  const walls = Array.from({ length: n }, () => Array(n).fill(15));
+  const seen = Array.from({ length: n }, () => Array(n).fill(false));
+  const stack = [[0, 0]]; seen[0][0] = true;
+  while (stack.length) {
+    const [r, c] = stack[stack.length - 1];
+    const opts = DIRS.map((d, i) => i).filter(i => {
+      const nr = r + DIRS[i].dr, nc = c + DIRS[i].dc;
+      return nr >= 0 && nr < n && nc >= 0 && nc < n && !seen[nr][nc];
+    });
+    if (!opts.length) { stack.pop(); continue; }
+    const d = DIRS[opts[Math.floor(rand() * opts.length)]];
+    const nr = r + d.dr, nc = c + d.dc;
+    walls[r][c] &= ~d.bit; walls[nr][nc] &= ~d.opp;
+    seen[nr][nc] = true; stack.push([nr, nc]);
+  }
+  const start = [Math.floor(n / 2), Math.floor(n / 2)];
+  const pick = () => 1 + Math.floor(rand() * (n - 2));
+  // יציאה בכל צלע: למעלה, ימין, למטה, שמאל
+  const exits = [
+    { cell: [0, pick()], dir: 0 },
+    { cell: [pick(), n - 1], dir: 1 },
+    { cell: [n - 1, pick()], dir: 2 },
+    { cell: [pick(), 0], dir: 3 }
+  ];
+  exits.forEach(e => { walls[e.cell[0]][e.cell[1]] &= ~DIRS[e.dir].bit; });
+
+  const paths = exits.map(e => treePath(walls, n, start, e.cell));
+  const correct = Math.floor(rand() * 4);
+  const onCorrect = new Set(paths[correct].map(p => p.join(",")));
+  // חוסמים כל יציאה אחרת בקיר אחד, על קטע הדרך שלא משותף לדרך הנכונה
+  exits.forEach((e, i) => {
+    if (i === correct) return;
+    const p = paths[i];
+    let k = p.findIndex(x => !onCorrect.has(x.join(",")));
+    if (k < 1) k = 1;
+    const cut = Math.min(p.length - 2, (k - 1) + Math.floor((p.length - k) * (0.35 + rand() * 0.3)));
+    addWall(walls, p[cut], p[cut + 1]);
+  });
+  const reach = reachable(walls, n, start);
+  if (!reach.has(exits[correct].cell.join(",")) ||
+      exits.some((e, i) => i !== correct && reach.has(e.cell.join(",")))) {
+    return makeMaze(n, seed + 7919); // לא אמור לקרות, ליתר ביטחון
+  }
+  return { n, walls, start, exits, paths, correct };
+}
+function open(walls, n, r, c, d) {
+  const nr = r + DIRS[d].dr, nc = c + DIRS[d].dc;
+  return nr >= 0 && nr < n && nc >= 0 && nc < n && !(walls[r][c] & DIRS[d].bit);
+}
+function treePath(walls, n, from, to) {
+  const key = p => p[0] * n + p[1];
+  const prev = new Map([[key(from), null]]);
+  const q = [from];
+  while (q.length) {
+    const [r, c] = q.shift();
+    if (r === to[0] && c === to[1]) break;
+    for (let d = 0; d < 4; d++) if (open(walls, n, r, c, d)) {
+      const nx = [r + DIRS[d].dr, c + DIRS[d].dc];
+      if (!prev.has(key(nx))) { prev.set(key(nx), [r, c]); q.push(nx); }
+    }
+  }
+  const out = []; let cur = to;
+  while (cur) { out.push(cur); cur = prev.get(key(cur)); }
+  return out.reverse();
+}
+function reachable(walls, n, from) {
+  const seen = new Set([from.join(",")]); const q = [from];
+  while (q.length) {
+    const [r, c] = q.shift();
+    for (let d = 0; d < 4; d++) if (open(walls, n, r, c, d)) {
+      const k = (r + DIRS[d].dr) + "," + (c + DIRS[d].dc);
+      if (!seen.has(k)) { seen.add(k); q.push([r + DIRS[d].dr, c + DIRS[d].dc]); }
+    }
+  }
+  return seen;
+}
+function addWall(walls, a, b) {
+  const d = DIRS.findIndex(x => a[0] + x.dr === b[0] && a[1] + x.dc === b[1]);
+  walls[a[0]][a[1]] |= DIRS[d].bit; walls[b[0]][b[1]] |= DIRS[d].opp;
+}
+
+// ===== ציור =====
+const canvas = document.getElementById("maze");
+const ctx = canvas.getContext("2d");
+function draw(m, path) {
+  const avail = Math.min(document.querySelector("main").clientWidth - 40, 560);
+  const pad = 22;
+  const cell = Math.max(4, Math.floor((avail - pad * 2) / m.n));
+  const size = cell * m.n + pad * 2;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = size * dpr; canvas.height = size * dpr;
+  canvas.style.width = size + "px"; canvas.style.height = size + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+  const X = c => pad + c * cell, Y = r => pad + r * cell;
+
+  ctx.strokeStyle = "#1a1a1a"; ctx.lineWidth = m.n > 20 ? 1 : 2; ctx.lineCap = "square";
+  ctx.beginPath();
+  for (let r = 0; r < m.n; r++) for (let c = 0; c < m.n; c++) {
+    const w = m.walls[r][c];
+    if (w & 1) { ctx.moveTo(X(c), Y(r)); ctx.lineTo(X(c + 1), Y(r)); }
+    if (w & 8) { ctx.moveTo(X(c), Y(r)); ctx.lineTo(X(c), Y(r + 1)); }
+    if (r === m.n - 1 && (w & 4)) { ctx.moveTo(X(c), Y(r + 1)); ctx.lineTo(X(c + 1), Y(r + 1)); }
+    if (c === m.n - 1 && (w & 2)) { ctx.moveTo(X(c + 1), Y(r)); ctx.lineTo(X(c + 1), Y(r + 1)); }
+  }
+  ctx.stroke();
+
+  if (path) {
+    ctx.strokeStyle = "rgba(224,33,138,.75)";
+    ctx.lineWidth = Math.max(2, cell * 0.38); ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.beginPath();
+    path.cells.forEach(([r, c], i) => {
+      const x = X(c) + cell / 2, y = Y(r) + cell / 2;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    const last = path.cells[path.cells.length - 1], d = DIRS[path.exitDir];
+    ctx.lineTo(X(last[1]) + cell / 2 + d.dc * cell, Y(last[0]) + cell / 2 + d.dr * cell);
+    ctx.stroke();
+  }
+
+  // התחלה
+  ctx.fillStyle = "#0e8a5f";
+  ctx.beginPath();
+  ctx.arc(X(m.start[1]) + cell / 2, Y(m.start[0]) + cell / 2, Math.max(4, cell * 0.42), 0, Math.PI * 2);
+  ctx.fill();
+
+  // יציאות
+  m.exits.forEach((e, i) => {
+    const [r, c] = e.cell, d = DIRS[e.dir];
+    const x = X(c) + cell / 2 + d.dc * (cell / 2 + 11), y = Y(r) + cell / 2 + d.dr * (cell / 2 + 11);
+    ctx.fillStyle = EXIT_COLORS[i];
+    ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.font = "bold 13px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(EXIT_NAMES[i], x, y + 1);
+  });
+}
+
+function stepsText(path) {
+  const moves = [];
+  for (let i = 1; i < path.cells.length; i++) {
+    const a = path.cells[i - 1], b = path.cells[i];
+    moves.push(DIRS.findIndex(x => a[0] + x.dr === b[0] && a[1] + x.dc === b[1]));
+  }
+  moves.push(path.exitDir);
+  const runs = [];
+  moves.forEach(d => {
+    if (runs.length && runs[runs.length - 1].d === d) runs[runs.length - 1].k++;
+    else runs.push({ d, k: 1 });
+  });
+  return runs.map((x, i) => `<span>${i + 1}. ${DIRS[x.d].word} ${x.k}</span>`).join(" ");
+}
+
+// ===== מהלך הניסוי =====
+const plan = [];
+STAGES.forEach((s, si) => {
+  for (let t = 0; t < s.trials; t++) {
+    const seed = 1000 + si * 37 + t * 101 + (s.size === "large" ? 50000 : 0);
+    plan.push({ stage: si, t, size: s.size, mode: s.mode, aiWrong: s.mode !== "solo" && t === s.wrong, seed });
+  }
+});
+const results = [];
+let idx = -1, current = null, t0 = 0, timerId = null;
+
+const $ = id => document.getElementById(id);
+function show(id) {
+  ["intro", "between", "trial", "done"].forEach(x => $(x).classList.toggle("hidden", x !== id));
+  window.scrollTo(0, 0);
+}
+
+const STAGE_INTRO = {
+  solo: "בשלב הזה אתם לבד. מצאו את היציאה שמחוברת לנקודת ההתחלה הירוקה.",
+  verbal: "בשלב הזה עוזר AI ממליץ על יציאה ומפרט את הדרך במילים, צעד אחרי צעד. אפשר לבדוק את ההסבר, או פשוט לסמוך עליו.",
+  highlight: "בשלב הזה עוזר AI ממליץ על יציאה ומסמן את הדרך שלו על המבוך בוורוד. אפשר לבדוק את הסימון, או פשוט לסמוך עליו."
+};
+
+function next() {
+  idx++;
+  if (idx >= plan.length) return finish();
+  const p = plan[idx];
+  if (p.t === 0) {
+    const s = STAGES[p.stage];
+    $("betweenTitle").textContent = `${SIZES[s.size].label}: ${MODE_LABEL[s.mode]}`;
+    $("betweenText").textContent = `שלב ${p.stage + 1} מתוך ${STAGES.length}. ${STAGE_INTRO[s.mode]} ${s.trials} מבוכים, ${SIZES[s.size].seconds} שניות לכל אחד.`;
+    show("between");
+    $("continueBtn").onclick = () => runTrial(p);
+  } else runTrial(p);
+}
+
+function runTrial(p) {
+  show("trial");
+  const m = makeMaze(SIZES[p.size].n, p.seed);
+  let aiPick = null, path = null;
+  if (p.mode !== "solo") {
+    if (p.aiWrong) {
+      // ה-AI ממליץ על יציאה חסומה. הדרך שלו עוברת דרך קיר אחד.
+      const decoys = [0, 1, 2, 3].filter(i => i !== m.correct);
+      aiPick = decoys[p.seed % 3];
+    } else aiPick = m.correct;
+    path = { cells: m.paths[aiPick], exitDir: m.exits[aiPick].dir };
+  }
+  current = { p, m, aiPick };
+
+  $("stageLabel").textContent = `${SIZES[p.size].label} · ${MODE_LABEL[p.mode]}`;
+  $("trialLabel").textContent = `מבוך ${idx + 1} מתוך ${plan.length}`;
+  draw(m, p.mode === "highlight" ? path : null);
+
+  $("aiBox").classList.toggle("hidden", p.mode === "solo");
+  if (aiPick !== null) {
+    $("aiPick").innerHTML = `יציאה <span class="badge" style="background:${EXIT_COLORS[aiPick]}">${EXIT_NAMES[aiPick]}</span>`;
+    $("aiHint").textContent = p.mode === "verbal" ? "הדרך מנקודת ההתחלה, לפי ה-AI:" : "הדרך שה-AI מצא מסומנת בוורוד על המבוך.";
+    $("aiSteps").classList.toggle("hidden", p.mode !== "verbal");
+    if (p.mode === "verbal") { $("aiSteps").innerHTML = stepsText(path); $("aiSteps").scrollTop = 0; }
+  }
+
+  const box = $("exitBtns"); box.innerHTML = "";
+  EXIT_NAMES.forEach((name, i) => {
+    const b = document.createElement("button");
+    b.textContent = name; b.style.background = EXIT_COLORS[i];
+    b.onclick = () => answer(i);
+    box.appendChild(b);
+  });
+
+  const total = SIZES[p.size].seconds * 1000;
+  t0 = performance.now();
+  clearInterval(timerId);
+  timerId = setInterval(() => {
+    const left = total - (performance.now() - t0);
+    $("timerFill").style.width = Math.max(0, left / total * 100) + "%";
+    $("timer").classList.toggle("low", left < total * 0.25);
+    if (left <= 0) answer(null);
+  }, 100);
+}
+
+function answer(choice) {
+  if (!current) return;
+  clearInterval(timerId);
+  const { p, m, aiPick } = current;
+  current = null;
+  results.push({
+    stage: p.stage, size: p.size, mode: p.mode,
+    correct: choice === m.correct,
+    timedOut: choice === null,
+    aiWrong: p.aiWrong,
+    followed: aiPick !== null && choice === aiPick,
+    secs: Math.min(SIZES[p.size].seconds, (performance.now() - t0) / 1000)
+  });
+  next();
+}
+
+// ===== סיום =====
+function finish() {
+  const per = STAGES.map((s, si) => {
+    const r = results.filter(x => x.stage === si);
+    return {
+      s, n: r.length,
+      correct: r.filter(x => x.correct).length,
+      followedWrong: r.filter(x => x.aiWrong && x.followed).length,
+      secs: Math.round(r.reduce((a, x) => a + x.secs, 0) / r.length)
+    };
+  });
+
+  let html = "<tr><th>שלב</th><th>נכונות</th><th>זמן ממוצע</th></tr>";
+  per.forEach(x => {
+    html += `<tr><td>${SIZES[x.s.size].label.split(" (")[0]} · ${MODE_LABEL[x.s.mode]}</td><td>${x.correct} מתוך ${x.n}</td><td>${x.secs} שנ׳</td></tr>`;
+  });
+  $("summary").innerHTML = html;
+  const fw = per.filter(x => x.s.mode !== "solo");
+  const followed = fw.reduce((a, x) => a + x.followedWrong, 0);
+  $("followNote").textContent = `ה-AI טעה בכוונה ב-4 מתוך 12 ההמלצות שלו (פעם אחת בכל שלב עם AI). הלכתם אחריו כשטעה ב-${followed} מתוך 4.`;
+
+  // קוד: MZ1-קטן(לבד.מילולי.הלך-כשטעה.סימון.הלך-כשטעה)-גדול(אותו דבר)-זמנים בשניות לפי סדר השלבים
+  const part = (a, b, c) => [per[a].correct, per[b].correct, per[b].followedWrong, per[c].correct, per[c].followedWrong].join(".");
+  const code = `MZ1-${part(0, 1, 2)}-${part(3, 4, 5)}-${per.map(x => x.secs).join(".")}`;
+  $("code").textContent = code;
+
+  if (!SHEET_URL) {
+    $("sendBtn").classList.add("hidden");
+    $("sendStatus").textContent = "העתיקו את הקוד והדביקו אותו בקבוצת הקורס.";
+  }
+  $("sendBtn").onclick = async () => {
+    $("sendBtn").disabled = true; $("sendStatus").textContent = "שולח...";
+    try {
+      await fetch(SHEET_URL, { method: "POST", mode: "no-cors", body: new URLSearchParams({ code }) });
+      $("sendStatus").textContent = "נשלח. אפשר לסגור את העמוד.";
+    } catch (e) {
+      $("sendBtn").disabled = false;
+      $("sendStatus").textContent = "השליחה נכשלה. העתיקו את הקוד והדביקו אותו בקבוצת הקורס.";
+    }
+  };
+  $("copyBtn").onclick = async () => {
+    try { await navigator.clipboard.writeText(code); $("copyBtn").textContent = "הועתק"; }
+    catch (e) { $("copyBtn").textContent = "סמנו את הקוד והעתיקו ידנית"; }
+  };
+  show("done");
+}
+
+$("startBtn").onclick = next;
+window.addEventListener("resize", () => {
+  if (current) draw(current.m, current.p.mode === "highlight" ? { cells: current.m.paths[current.aiPick], exitDir: current.m.exits[current.aiPick].dir } : null);
+});
+</script>
+</body>
+</html>
