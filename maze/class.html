@@ -61,8 +61,8 @@
   </div>
 </main>
 <script>
-// כתובת ה-Web app של הגיליון (apps-script.gs). ריק = מצב הדבקה בלבד.
-const SHEET_URL = "";
+// כתובת ה-Web app של הגיליון (apps-script.gs בתיקייה הראשית). ריק = מצב הדבקה בלבד.
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwUzo2U8YDiKNB8abNtQK_Eu7cPN4w-n7zlg15_86dtgA35QXARrqDfLq3vJF4VfPFyAw/exec";
 
 const SOLO = String.raw`(\d)\.(\d)\.(\d{1,2})\.(\d{1,2})`;
 const AI = String.raw`(\d)\.(\d)\.([NB])\.(\d)\.(\d{1,2})\.(\d{1,2})`;
@@ -158,7 +158,7 @@ if (SHEET_URL) {
   window.onSheet = data => (data.rows || []).forEach(r => addText(r.code));
   const poll = () => {
     const s = document.createElement("script");
-    s.src = SHEET_URL + "?action=list&callback=onSheet&t=" + Date.now();
+    s.src = SHEET_URL + "?action=list&sheet=maze&callback=onSheet&t=" + Date.now();
     s.onload = s.onerror = () => s.remove();
     document.body.appendChild(s);
   };
