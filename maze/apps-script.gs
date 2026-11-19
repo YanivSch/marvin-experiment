@@ -2,21 +2,22 @@
 // מדביקים ב-Apps Script של הגיליון ופורסים כ-Web app (Execute as: Me, Who has access: Anyone).
 const SHEET_NAME = 'maze';
 
-// MZ1-קטן(לבד.מילולי.הלך-כשטעה.סימון.הלך-כשטעה)-גדול(אותו דבר)-6 זמנים בשניות
-const RE = /MZ1-(\d)\.(\d)\.(\d)\.(\d)\.(\d)-(\d)\.(\d)\.(\d)\.(\d)\.(\d)-(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})/;
-const MAX = [2, 3, 1, 3, 1, 2, 3, 1, 3, 1];
+// MZ2-קטן(לבד.מילולי.הלך-כשטעה.סימון.הלך-כשטעה)-גדול(אותו דבר)-בונוס גבוה(סימון.הלך-כשטעה)
+//    -7 זמנים בשניות-סדר(H/L)-P ניקוד-כינוי
+const RE = /MZ2-(\d)\.(\d)\.(\d)\.(\d)\.(\d)-(\d)\.(\d)\.(\d)\.(\d)\.(\d)-(\d)\.(\d)-(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})-([HL])-P(\d{1,2})-([^\s]{1,12})/;
+const MAX = [2, 3, 1, 3, 1, 2, 3, 1, 3, 1, 2, 1];
 
 function doPost(e) {
   const raw = (e.parameter && e.parameter.code) || (e.postData && e.postData.contents) || '';
   const m = String(raw).match(RE);
   if (!m) return reply('bad code');
-  const v = m.slice(1).map(Number);
-  if (v.slice(0, 10).some(function (x, i) { return x > MAX[i]; })) return reply('bad code');
+  const v = m.slice(1, 20).map(Number);
+  if (v.slice(0, 12).some(function (x, i) { return x > MAX[i]; })) return reply('bad code');
 
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    SpreadsheetApp.getActive().getSheetByName(SHEET_NAME).appendRow([new Date(), m[0]].concat(v));
+    SpreadsheetApp.getActive().getSheetByName(SHEET_NAME).appendRow([new Date(), m[0]].concat(v, [m[20], Number(m[21]), m[22]]));
   } finally {
     lock.releaseLock();
   }

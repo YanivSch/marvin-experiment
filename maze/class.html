@@ -38,8 +38,8 @@
       <div class="muted" id="source"></div>
     </div>
     <div id="pasteArea">
-      <p class="muted" style="margin-bottom:6px">הדביקו כאן את ההודעות מקבוצת הקורס. הלוח מוצא לבד את הקודים שמתחילים ב-MZ1 ומתעלם מכפילויות.</p>
-      <textarea id="paste" placeholder="MZ1-2.3.0.3.0-1.2.1.3.0-14.11.6.52.48.21"></textarea>
+      <p class="muted" style="margin-bottom:6px">הדביקו כאן את ההודעות מקבוצת הקורס. הלוח מוצא לבד את הקודים שמתחילים ב-MZ2 ומתעלם מכפילויות.</p>
+      <textarea id="paste" placeholder="MZ2-2.3.0.3.0-1.2.1.3.0-2.0-14.11.6.52.48.21.40-H-P30-דנה"></textarea>
       <div class="row">
         <button id="addBtn">הוספה ללוח</button>
         <button class="ghost" id="clearBtn">ניקוי</button>
@@ -52,9 +52,14 @@
     <div class="card" id="large"></div>
   </div>
 
+  <div class="grid">
+    <div class="card" id="bonus"></div>
+    <div class="card" id="leaders"></div>
+  </div>
+
   <div class="card">
     <h2>מה המאמר מצא (Vasconcelos ועמיתים, CSCW 2023)</h2>
-    <p>במבוך קשה, הסבר הפחית את ההסתמכות היתרה על ה-AI. במבוך קל הוא לא שינה דבר, כי ממילא היה זול לפתור לבד. הסבר שקשה יותר לבדוק (רשימת צעדים במילים לעומת סימון על המבוך) הגדיל את ההסתמכות היתרה.</p>
+    <p>במבוך קשה, הסבר הפחית את ההסתמכות היתרה על ה-AI. במבוך קל הוא לא שינה דבר, כי ממילא היה זול לפתור לבד. הסבר שקשה יותר לבדוק (רשימת צעדים במילים לעומת סימון על המבוך) הגדיל את ההסתמכות היתרה. ובצד התועלת: כשכל מבוך נכון היה שווה 50 סנט במקום סנט אחד, ההסתמכות היתרה ירדה.</p>
     <p class="muted">לדיון: האם גם אצלנו ההסבר המילולי במבוך הגדול "נקנה" יותר מהסימון? כמה זמן השקעתם בבדיקה בכל שלב?</p>
   </div>
 </main>
@@ -62,28 +67,33 @@
 // כתובת ה-Web app של הגיליון (apps-script.gs). ריק = מצב הדבקה בלבד.
 const SHEET_URL = "";
 
-const RE = /MZ1-(\d)\.(\d)\.(\d)\.(\d)\.(\d)-(\d)\.(\d)\.(\d)\.(\d)\.(\d)-(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})/g;
+const RE = /MZ2-(\d)\.(\d)\.(\d)\.(\d)\.(\d)-(\d)\.(\d)\.(\d)\.(\d)\.(\d)-(\d)\.(\d)-(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})-([HL])-P(\d{1,2})-([^\s]{1,12})/g;
 const codes = new Map();
-try { JSON.parse(localStorage.getItem("mz1codes") || "[]").forEach(c => codes.set(c, parse(c))); } catch (e) {}
+try { JSON.parse(localStorage.getItem("mz2codes") || "[]").forEach(c => { const p = parse(c); if (p) codes.set(c, p); }); } catch (e) {}
 
 function parse(code) {
   RE.lastIndex = 0;
   const m = RE.exec(code); if (!m) return null;
-  const v = m.slice(1).map(Number);
-  const max = [2, 3, 1, 3, 1, 2, 3, 1, 3, 1];
-  if (v.slice(0, 10).some((x, i) => x > max[i])) return null;
-  const part = (o, t) => ({
-    solo: { acc: v[o] / 2, secs: v[10 + t] },
-    verbal: { acc: v[o + 1] / 3, follow: v[o + 2], secs: v[11 + t] },
-    highlight: { acc: v[o + 3] / 3, follow: v[o + 4], secs: v[12 + t] }
+  const v = m.slice(1, 20).map(Number);
+  const max = [2, 3, 1, 3, 1, 2, 3, 1, 3, 1, 2, 1];
+  if (v.slice(0, 12).some((x, i) => x > max[i])) return null;
+  const t = v.slice(12, 19);
+  const part = (o, a) => ({
+    solo: { acc: v[o] / 2, secs: t[a] },
+    verbal: { acc: v[o + 1] / 3, follow: v[o + 2], secs: t[a + 1] },
+    highlight: { acc: v[o + 3] / 3, follow: v[o + 4], secs: t[a + 2] }
   });
-  return { small: part(0, 0), large: part(5, 3) };
+  return {
+    small: part(0, 0), large: part(5, 3),
+    high: { acc: v[10] / 2, follow: v[11], secs: t[6] },
+    highFirst: m[20] === "H", points: Number(m[21]), nick: m[22]
+  };
 }
 
 function addText(text) {
   const found = String(text).match(RE) || [];
   found.forEach(c => { const p = parse(c); if (p) codes.set(c, p); });
-  try { localStorage.setItem("mz1codes", JSON.stringify([...codes.keys()])); } catch (e) {}
+  try { localStorage.setItem("mz2codes", JSON.stringify([...codes.keys()])); } catch (e) {}
   render();
 }
 
@@ -119,16 +129,54 @@ function renderSize(id, title, key) {
     </div>`;
 }
 
+function renderBonus() {
+  const rows = [...codes.values()];
+  const pct = x => Math.round(x * 100) + "%";
+  const low = rows.map(r => r.large.highlight), high = rows.map(r => r.high);
+  const lowFol = avg(low.map(x => x.follow)), highFol = avg(high.map(x => x.follow));
+  const lowSec = avg(low.map(x => x.secs)), highSec = avg(high.map(x => x.secs));
+  const maxSec = Math.max(1, lowSec, highSec);
+  const hf = rows.filter(r => r.highFirst).length;
+  document.getElementById("bonus").innerHTML = `
+    <h2>תמריץ: נקודה אחת מול 10 נקודות</h2>
+    <div class="muted">מבוך גדול עם סימון על המבוך. ${rows.length ? `${hf} התחילו מהבונוס הגבוה, ${rows.length - hf} מהרגיל.` : "עדיין אין תוצאות"}</div>
+    <div class="metric"><h3>דיוק</h3>
+      ${bar("נקודה אחת", avg(low.map(x => x.acc)), pct(avg(low.map(x => x.acc))), "#8a8a8a", 1)}
+      ${bar("10 נקודות", avg(high.map(x => x.acc)), pct(avg(high.map(x => x.acc))), "#f0b400", 1)}
+    </div>
+    <div class="metric"><h3>הלכו אחרי ה-AI כשטעה</h3>
+      ${bar("נקודה אחת", lowFol, pct(lowFol), "#8a8a8a", 1)}
+      ${bar("10 נקודות", highFol, pct(highFol), "#f0b400", 1)}
+    </div>
+    <div class="metric"><h3>זמן ממוצע למבוך</h3>
+      ${bar("נקודה אחת", lowSec, Math.round(lowSec) + " שנ׳", "#8a8a8a", maxSec)}
+      ${bar("10 נקודות", highSec, Math.round(highSec) + " שנ׳", "#f0b400", maxSec)}
+    </div>`;
+}
+
+function renderLeaders() {
+  const esc = x => x.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const top = [...codes.values()].sort((a, b) => b.points - a.points).slice(0, 10);
+  document.getElementById("leaders").innerHTML = `
+    <h2>טבלת המובילים</h2>
+    <div class="muted">מתוך 36 נקודות אפשריות</div>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:18px">
+      ${top.map((r, i) => `<tr style="border-bottom:1px solid #eee"><td style="padding:8px;width:40px;font-weight:bold;color:${i < 3 ? "#f0b400" : "#666"}">${i + 1}</td><td style="padding:8px">${esc(r.nick.replace(/_/g, " "))}</td><td style="padding:8px;font-weight:bold;text-align:left">${r.points}</td></tr>`).join("") || "<tr><td class='muted'>עדיין אין תוצאות</td></tr>"}
+    </table>`;
+}
+
 function render() {
   document.getElementById("count").textContent = codes.size;
   renderSize("small", "מבוך קטן (10×10)", "small");
   renderSize("large", "מבוך גדול (50×50)", "large");
+  renderBonus();
+  renderLeaders();
 }
 
 document.getElementById("addBtn").onclick = () => { addText(document.getElementById("paste").value); document.getElementById("paste").value = ""; };
 document.getElementById("clearBtn").onclick = () => {
   if (!window.confirmClear) { window.confirmClear = true; document.getElementById("clearBtn").textContent = "ללחוץ שוב לאישור"; return; }
-  codes.clear(); try { localStorage.removeItem("mz1codes"); } catch (e) {}
+  codes.clear(); try { localStorage.removeItem("mz2codes"); } catch (e) {}
   window.confirmClear = false; document.getElementById("clearBtn").textContent = "ניקוי"; render();
 };
 
