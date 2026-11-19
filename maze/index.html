@@ -40,7 +40,7 @@
   .hidden { display:none !important; }
   .worth { text-align:center; font-size:15px; margin-bottom:8px; color:var(--muted); }
   .worth.high { background:#fff4d6; border:2px solid #f0b400; color:#7a5600; border-radius:10px; padding:8px; font-size:18px; font-weight:bold; }
-  .points { font-size:40px; font-weight:bold; color:var(--blue); text-align:center; margin:6px 0 12px; }
+  .points { font-size:30px; font-weight:bold; color:var(--blue); text-align:center; margin:6px 0 12px; }
 </style>
 </head>
 <body>
@@ -57,8 +57,8 @@
     <li><b>סימון על המבוך:</b> עוזר AI ממליץ על יציאה ומסמן את הדרך על המבוך.</li>
   </ol>
   <p>ה-AI לא תמיד צודק. ההחלטה שלכם.</p>
-  <p><b>ניקוד:</b> כל מבוך שפתרתם נכון שווה נקודות. רוב המבוכים שווים נקודה אחת, ושני מבוכים שווים 10 נקודות. בסוף יוצגו המובילים בלוח הכיתה.</p>
-  <p class="muted">18 מבוכים, כ-9 דקות. בכל מבוך יש זמן מוגבל: 25 שניות לקטן ו-60 לגדול. לא מקבלים משוב עד הסוף.</p>
+  <p><b>ניקוד:</b> כל מבוך שפתרתם נכון שווה נקודות. בכל שלב שני מבוכים שווים נקודה אחת ושניים שווים 10 נקודות. בסוף יוצגו המובילים בלוח הכיתה.</p>
+  <p class="muted">24 מבוכים, כ-12 דקות. בכל מבוך יש זמן מוגבל: 25 שניות לקטן ו-60 לגדול. לא מקבלים משוב עד הסוף.</p>
   <label for="nick" style="display:block;margin-bottom:6px">כינוי לטבלת המובילים:</label>
   <input id="nick" maxlength="12" autocomplete="off" placeholder="למשל: יניב" style="width:100%;font:inherit;padding:10px;border-radius:10px;border:1px solid #ccc;margin-bottom:12px;box-sizing:border-box">
   <button class="primary" id="startBtn">מתחילים</button>
@@ -115,21 +115,19 @@ const SIZES = {
   small: { n: 10, label: "מבוך קטן (10×10)", seconds: 25 },
   large: { n: 50, label: "מבוך גדול (50×50)", seconds: 60 }
 };
-// השלבים. wrong = מספר הניסיון (מ-0) שבו ה-AI טועה בכוונה. points = נקודות לכל מבוך שנפתר נכון.
-// שלב 6 (סימון, בונוס רגיל) ושלב 7 (סימון, בונוס גבוה) מוצגים בסדר אקראי לכל משתתף,
-// כדי שההשוואה בין רמות הבונוס לא תתערבב עם אפקט הלמידה.
+// השלבים, לפי הסדר. בכל שלב 4 מבוכים: 2 רגילים (נקודה אחת) ו-2 בבונוס (10 נקודות),
+// בסדר אקראי לכל משתתף. בשלבים עם AI הוא טועה בכוונה במבוך אחד, שנבחר באקראי,
+// כך שאצל חצי מהכיתה הטעות נופלת במבוך רגיל ואצל החצי השני במבוך בונוס.
 const STAGES = [
-  { size: "small", mode: "solo",      trials: 2, points: 1 },
-  { size: "small", mode: "verbal",    trials: 3, points: 1, wrong: 1 },
-  { size: "small", mode: "highlight", trials: 3, points: 1, wrong: 2 },
-  { size: "large", mode: "solo",      trials: 2, points: 1 },
-  { size: "large", mode: "verbal",    trials: 3, points: 1, wrong: 2 },
-  { size: "large", mode: "highlight", trials: 3, points: 1, wrong: 1 },
-  { size: "large", mode: "highlight", trials: 2, points: 10, wrong: 1 }
+  { size: "small", mode: "solo" },
+  { size: "small", mode: "verbal" },
+  { size: "small", mode: "highlight" },
+  { size: "large", mode: "solo" },
+  { size: "large", mode: "verbal" },
+  { size: "large", mode: "highlight" }
 ];
-const HIGH_FIRST = Math.random() < 0.5;
-const ORDER = HIGH_FIRST ? [0, 1, 2, 3, 4, 6, 5] : [0, 1, 2, 3, 4, 5, 6];
-const MAX_POINTS = STAGES.reduce((a, s) => a + s.trials * s.points, 0);
+const PER_STAGE = 4, LOW = 1, HIGH = 10;
+const MAX_POINTS = STAGES.length * 2 * (LOW + HIGH);
 const MODE_LABEL = { solo: "לבד", verbal: "הסבר מילולי", highlight: "סימון על המבוך" };
 
 // ===== מחולל מבוכים עם זרע קבוע: כל הכיתה מקבלת את אותם מבוכים =====
@@ -304,13 +302,23 @@ function stepsText(path) {
 }
 
 // ===== מהלך הניסוי =====
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
 const plan = [];
-ORDER.forEach((si, pos) => {
-  const s = STAGES[si];
-  for (let t = 0; t < s.trials; t++) {
-    const seed = 1000 + si * 37 + t * 101 + (s.size === "large" ? 50000 : 0);
-    plan.push({ stage: si, pos, t, size: s.size, mode: s.mode, points: s.points, aiWrong: s.mode !== "solo" && t === s.wrong, seed });
-  }
+STAGES.forEach((s, si) => {
+  const bonus = shuffle([false, false, true, true]);   // אילו מבוכים בבונוס
+  const wrongAt = Math.floor(Math.random() * PER_STAGE); // באיזה מבוך ה-AI טועה
+  const order = shuffle([0, 1, 2, 3]);                  // סדר ההצגה
+  order.forEach((mz, t) => {
+    const seed = 1000 + si * 37 + mz * 101 + (s.size === "large" ? 50000 : 0);
+    plan.push({
+      stage: si, t, size: s.size, mode: s.mode, seed,
+      points: bonus[mz] ? HIGH : LOW,
+      aiWrong: s.mode !== "solo" && mz === wrongAt
+    });
+  });
 });
 const results = [];
 let idx = -1, current = null, t0 = 0, timerId = null;
@@ -333,13 +341,8 @@ function next() {
   const p = plan[idx];
   if (p.t === 0) {
     const s = STAGES[p.stage];
-    const prev = p.pos > 0 ? STAGES[ORDER[p.pos - 1]] : null;
-    const repeat = prev && prev.size === s.size && prev.mode === s.mode;
-    let worth = "";
-    if (s.points > 1) worth = ` שימו לב: בשלב הזה כל מבוך שפתרתם נכון שווה ${s.points} נקודות, במקום נקודה אחת.`;
-    else if (repeat) worth = " בשלב הזה כל מבוך שווה שוב נקודה אחת.";
-    $("betweenTitle").textContent = `${SIZES[s.size].label}: ${MODE_LABEL[s.mode]}${s.points > 1 ? ", בונוס גבוה" : ""}`;
-    $("betweenText").textContent = `שלב ${p.pos + 1} מתוך ${STAGES.length}. ${repeat ? "עוד שלב עם סימון על המבוך." : STAGE_INTRO[s.mode]}${worth} ${s.trials} מבוכים, ${SIZES[s.size].seconds} שניות לכל אחד.`;
+    $("betweenTitle").textContent = `${SIZES[s.size].label}: ${MODE_LABEL[s.mode]}`;
+    $("betweenText").textContent = `שלב ${p.stage + 1} מתוך ${STAGES.length}. ${STAGE_INTRO[s.mode]} ${PER_STAGE} מבוכים, ${SIZES[s.size].seconds} שניות לכל אחד. שניים מהם שווים ${HIGH} נקודות, ותראו את זה על המסך.`;
     show("between");
     $("continueBtn").onclick = () => runTrial(p);
   } else runTrial(p);
@@ -359,7 +362,7 @@ function runTrial(p) {
   }
   current = { p, m, aiPick };
 
-  $("stageLabel").textContent = `${SIZES[p.size].label} · ${MODE_LABEL[p.mode]}${p.points > 1 ? " · בונוס" : ""}`;
+  $("stageLabel").textContent = `${SIZES[p.size].label} · ${MODE_LABEL[p.mode]}`;
   $("worth").className = "worth" + (p.points > 1 ? " high" : "");
   $("worth").textContent = p.points > 1 ? `★ המבוך הזה שווה ${p.points} נקודות ★` : "המבוך הזה שווה נקודה אחת";
   $("trialLabel").textContent = `מבוך ${idx + 1} מתוך ${plan.length}`;
@@ -404,6 +407,7 @@ function answer(choice) {
     aiWrong: p.aiWrong,
     followed: aiPick !== null && choice === aiPick,
     earned: choice === m.correct ? p.points : 0,
+    high: p.points > 1,
     secs: Math.min(SIZES[p.size].seconds, (performance.now() - t0) / 1000)
   });
   next();
@@ -413,32 +417,33 @@ function answer(choice) {
 function finish() {
   const per = STAGES.map((s, si) => {
     const r = results.filter(x => x.stage === si);
-    return {
-      s, n: r.length,
-      correct: r.filter(x => x.correct).length,
-      followedWrong: r.filter(x => x.aiWrong && x.followed).length,
-      secs: Math.round(r.reduce((a, x) => a + x.secs, 0) / r.length)
+    const lv = hi => {
+      const q = r.filter(x => x.high === hi);
+      return { correct: q.filter(x => x.correct).length, secs: Math.round(q.reduce((a, x) => a + x.secs, 0) / q.length) };
     };
+    const w = r.find(x => x.aiWrong);
+    return { s, n: r.length, low: lv(false), high: lv(true), wrongHigh: w ? w.high : null, followed: w && w.followed ? 1 : 0 };
   });
 
-  let html = "<tr><th>שלב</th><th>נכונות</th><th>זמן ממוצע</th></tr>";
-  ORDER.forEach(si => {
-    const x = per[si];
-    html += `<tr><td>${SIZES[x.s.size].label.split(" (")[0]} · ${MODE_LABEL[x.s.mode]}${x.s.points > 1 ? " · בונוס ×10" : ""}</td><td>${x.correct} מתוך ${x.n}</td><td>${x.secs} שנ׳</td></tr>`;
+  let html = `<tr><th>שלב</th><th>רגיל</th><th>בונוס</th><th>זמן ממוצע</th></tr>`;
+  per.forEach(x => {
+    html += `<tr><td>${SIZES[x.s.size].label.split(" (")[0]} · ${MODE_LABEL[x.s.mode]}</td><td>${x.low.correct}/2</td><td>${x.high.correct}/2</td><td>${Math.round((x.low.secs + x.high.secs) / 2)} שנ׳</td></tr>`;
   });
+  $("summary").innerHTML = html;
   const points = results.reduce((a, x) => a + x.earned, 0);
   $("points").textContent = `${points} נקודות מתוך ${MAX_POINTS}`;
-  $("summary").innerHTML = html;
   const fw = per.filter(x => x.s.mode !== "solo");
-  const followed = fw.reduce((a, x) => a + x.followedWrong, 0);
-  const nAi = fw.reduce((a, x) => a + x.n, 0);
-  $("followNote").textContent = `ה-AI טעה בכוונה ב-${fw.length} מתוך ${nAi} ההמלצות שלו (פעם אחת בכל שלב עם AI). הלכתם אחריו כשטעה ב-${followed} מתוך ${fw.length}.`;
+  const followed = fw.reduce((a, x) => a + x.followed, 0);
+  $("followNote").textContent = `ה-AI טעה בכוונה ב-${fw.length} מתוך ${fw.length * PER_STAGE} ההמלצות שלו (פעם אחת בכל שלב עם AI). הלכתם אחריו כשטעה ב-${followed} מתוך ${fw.length}.`;
 
-  // קוד: MZ2-קטן(לבד.מילולי.הלך-כשטעה.סימון.הלך-כשטעה)-גדול(אותו דבר)-בונוס גבוה(סימון.הלך-כשטעה)
-  //      -7 זמנים בשניות לפי מספר השלב-סדר (H=בונוס גבוה קודם, L=רגיל קודם)-P ניקוד-כינוי
-  const part = (a, b, c) => [per[a].correct, per[b].correct, per[b].followedWrong, per[c].correct, per[c].followedWrong].join(".");
+  // קוד: MZ3-6 קטעים, אחד לכל שלב, ואז P ניקוד-כינוי.
+  // שלב לבד:   נכון-רגיל.נכון-בונוס.זמן-רגיל.זמן-בונוס
+  // שלב עם AI: נכון-רגיל.נכון-בונוס.איפה-הטעות(N=רגיל B=בונוס).הלך-אחרי-ה-AI-כשטעה.זמן-רגיל.זמן-בונוס
+  const seg = x => x.s.mode === "solo"
+    ? [x.low.correct, x.high.correct, x.low.secs, x.high.secs].join(".")
+    : [x.low.correct, x.high.correct, x.wrongHigh ? "B" : "N", x.followed, x.low.secs, x.high.secs].join(".");
   const nick = ($("nick").value || "").trim().replace(/[\s\-]+/g, "_").slice(0, 12) || "ללא_כינוי";
-  const code = `MZ2-${part(0, 1, 2)}-${part(3, 4, 5)}-${per[6].correct}.${per[6].followedWrong}-${per.map(x => x.secs).join(".")}-${HIGH_FIRST ? "H" : "L"}-P${points}-${nick}`;
+  const code = `MZ3-${per.map(seg).join("-")}-P${points}-${nick}`;
   $("code").textContent = code;
 
   if (!SHEET_URL) {

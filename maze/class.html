@@ -17,10 +17,10 @@
   .metric { margin-top:18px; }
   .metric h3 { margin:0 0 8px; font-size:17px; }
   .bar { display:flex; align-items:center; gap:10px; margin:6px 0; }
-  .bar .lab { width:130px; font-size:15px; }
+  .bar .lab { width:190px; font-size:15px; }
   .bar .track { flex:1; background:#eee; border-radius:6px; height:28px; overflow:hidden; }
   .bar .fill { height:100%; border-radius:6px; transition:width .4s; }
-  .bar .val { width:90px; font-weight:bold; font-size:16px; }
+  .bar .val { width:110px; font-weight:bold; font-size:16px; }
   textarea { width:100%; min-height:90px; font:inherit; direction:ltr; border-radius:10px; border:1px solid #ccc; padding:8px; box-sizing:border-box; }
   button { font:inherit; border:0; border-radius:10px; padding:10px 16px; cursor:pointer; background:var(--blue); color:#fff; font-weight:bold; }
   .ghost { background:#e9eef2; color:var(--ink); }
@@ -38,8 +38,8 @@
       <div class="muted" id="source"></div>
     </div>
     <div id="pasteArea">
-      <p class="muted" style="margin-bottom:6px">הדביקו כאן את ההודעות מקבוצת הקורס. הלוח מוצא לבד את הקודים שמתחילים ב-MZ2 ומתעלם מכפילויות.</p>
-      <textarea id="paste" placeholder="MZ2-2.3.0.3.0-1.2.1.3.0-2.0-14.11.6.52.48.21.40-H-P30-דנה"></textarea>
+      <p class="muted" style="margin-bottom:6px">הדביקו כאן את ההודעות מקבוצת הקורס. הלוח מוצא לבד את הקודים שמתחילים ב-MZ3 ומתעלם מכפילויות.</p>
+      <textarea id="paste" placeholder="MZ3-2.1.9.12-2.2.B.0.7.10-..."></textarea>
       <div class="row">
         <button id="addBtn">הוספה ללוח</button>
         <button class="ghost" id="clearBtn">ניקוי</button>
@@ -52,10 +52,7 @@
     <div class="card" id="large"></div>
   </div>
 
-  <div class="grid">
-    <div class="card" id="bonus"></div>
-    <div class="card" id="leaders"></div>
-  </div>
+  <div class="card" id="leaders"></div>
 
   <div class="card">
     <h2>מה המאמר מצא (Vasconcelos ועמיתים, CSCW 2023)</h2>
@@ -67,33 +64,36 @@
 // כתובת ה-Web app של הגיליון (apps-script.gs). ריק = מצב הדבקה בלבד.
 const SHEET_URL = "";
 
-const RE = /MZ2-(\d)\.(\d)\.(\d)\.(\d)\.(\d)-(\d)\.(\d)\.(\d)\.(\d)\.(\d)-(\d)\.(\d)-(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})\.(\d{1,2})-([HL])-P(\d{1,2})-([^\s]{1,12})/g;
+const SOLO = String.raw`(\d)\.(\d)\.(\d{1,2})\.(\d{1,2})`;
+const AI = String.raw`(\d)\.(\d)\.([NB])\.(\d)\.(\d{1,2})\.(\d{1,2})`;
+const RE = new RegExp(`MZ3-${SOLO}-${AI}-${AI}-${SOLO}-${AI}-${AI}-P(\\d{1,3})-([^\\s]{1,12})`, "g");
 const codes = new Map();
-try { JSON.parse(localStorage.getItem("mz2codes") || "[]").forEach(c => { const p = parse(c); if (p) codes.set(c, p); }); } catch (e) {}
+try { JSON.parse(localStorage.getItem("mz3codes") || "[]").forEach(c => { const p = parse(c); if (p) codes.set(c, p); }); } catch (e) {}
 
+// מחזיר לכל גודל ולכל צורת סיוע: דיוק וזמן בכל רמת בונוס, ואם ה-AI טעה במבוך רגיל או בונוס והאם הלכו אחריו
 function parse(code) {
   RE.lastIndex = 0;
   const m = RE.exec(code); if (!m) return null;
-  const v = m.slice(1, 20).map(Number);
-  const max = [2, 3, 1, 3, 1, 2, 3, 1, 3, 1, 2, 1];
-  if (v.slice(0, 12).some((x, i) => x > max[i])) return null;
-  const t = v.slice(12, 19);
-  const part = (o, a) => ({
-    solo: { acc: v[o] / 2, secs: t[a] },
-    verbal: { acc: v[o + 1] / 3, follow: v[o + 2], secs: t[a + 1] },
-    highlight: { acc: v[o + 3] / 3, follow: v[o + 4], secs: t[a + 2] }
-  });
-  return {
-    small: part(0, 0), large: part(5, 3),
-    high: { acc: v[10] / 2, follow: v[11], secs: t[6] },
-    highFirst: m[20] === "H", points: Number(m[21]), nick: m[22]
-  };
+  let i = 1; const out = { small: {}, large: {} };
+  const take = () => m[i++];
+  for (const size of ["small", "large"]) {
+    for (const mode of ["solo", "verbal", "highlight"]) {
+      const lowC = +take(), highC = +take();
+      let wrongHigh = null, followed = null;
+      if (mode !== "solo") { wrongHigh = take() === "B"; followed = +take(); if (followed > 1) return null; }
+      const lowS = +take(), highS = +take();
+      if (lowC > 2 || highC > 2) return null;
+      out[size][mode] = { low: { acc: lowC / 2, secs: lowS }, high: { acc: highC / 2, secs: highS }, wrongHigh, followed };
+    }
+  }
+  out.points = +take(); out.nick = take();
+  return out;
 }
 
 function addText(text) {
   const found = String(text).match(RE) || [];
   found.forEach(c => { const p = parse(c); if (p) codes.set(c, p); });
-  try { localStorage.setItem("mz2codes", JSON.stringify([...codes.keys()])); } catch (e) {}
+  try { localStorage.setItem("mz3codes", JSON.stringify([...codes.keys()])); } catch (e) {}
   render();
 }
 
@@ -104,54 +104,27 @@ function bar(label, value, text, color, max) {
 
 function renderSize(id, title, key) {
   const rows = [...codes.values()].map(x => x[key]);
-  const n = rows.length;
-  const pct = x => Math.round(x * 100) + "%";
-  const acc = m => avg(rows.map(r => r[m].acc));
-  const fol = m => avg(rows.map(r => r[m].follow));
-  const sec = m => avg(rows.map(r => r[m].secs));
-  const maxSec = Math.max(1, sec("solo"), sec("verbal"), sec("highlight"));
+  const pct = x => isNaN(x) ? "–" : Math.round(x * 100) + "%";
+  const M = ["solo", "verbal", "highlight"], NAME = { solo: "לבד", verbal: "הסבר מילולי", highlight: "סימון על המבוך" };
+  const COL = { solo: "#8a8a8a", verbal: "#007acc", highlight: "#e0218a" };
+  const acc = (m, lv) => avg(rows.map(r => r[m][lv].acc));
+  const sec = (m, lv) => avg(rows.map(r => r[m][lv].secs));
+  // הסתמכות יתרה: מתוך מי שה-AI טעה אצלו ברמת הבונוס הזו, כמה הלכו אחריו
+  const fol = (m, hi) => { const q = rows.filter(r => r[m].wrongHigh === hi); return { v: q.length ? avg(q.map(r => r[m].followed)) : NaN, n: q.length }; };
+  const maxSec = Math.max(1, ...M.flatMap(m => [sec(m, "low"), sec(m, "high")]));
+  const pair = (m, f, fmt, max) => `
+      ${bar(NAME[m] + " · רגיל", f(m, "low"), fmt(f(m, "low")), COL[m] + "88", max)}
+      ${bar(NAME[m] + " · בונוס", f(m, "high"), fmt(f(m, "high")), COL[m], max)}`;
+  const folBar = (m, hi) => { const x = fol(m, hi); return bar(`${NAME[m]} · ${hi ? "בונוס" : "רגיל"}`, x.v || 0, `${pct(x.v)} <span class="muted">(${x.n})</span>`, COL[m] + (hi ? "" : "88"), 1); };
   document.getElementById(id).innerHTML = `
     <h2>${title}</h2>
-    <div class="muted">${n ? "" : "עדיין אין תוצאות"}</div>
-    <div class="metric"><h3>דיוק</h3>
-      ${bar("לבד", acc("solo"), pct(acc("solo")), "#8a8a8a", 1)}
-      ${bar("הסבר מילולי", acc("verbal"), pct(acc("verbal")), "#007acc", 1)}
-      ${bar("סימון על המבוך", acc("highlight"), pct(acc("highlight")), "#e0218a", 1)}
-    </div>
+    <div class="muted">${rows.length ? "בהיר = מבוך רגיל (נקודה), כהה = מבוך בונוס (10 נקודות)" : "עדיין אין תוצאות"}</div>
+    <div class="metric"><h3>דיוק</h3>${M.map(m => pair(m, acc, pct, 1)).join("")}</div>
     <div class="metric"><h3>הלכו אחרי ה-AI כשטעה (הסתמכות יתרה)</h3>
-      ${bar("הסבר מילולי", fol("verbal"), pct(fol("verbal")), "#007acc", 1)}
-      ${bar("סימון על המבוך", fol("highlight"), pct(fol("highlight")), "#e0218a", 1)}
+      ${["verbal", "highlight"].map(m => folBar(m, false) + folBar(m, true)).join("")}
+      <div class="muted">בסוגריים: כמה משתתפים פגשו את הטעות של ה-AI במבוך מהסוג הזה.</div>
     </div>
-    <div class="metric"><h3>זמן ממוצע למבוך</h3>
-      ${bar("לבד", sec("solo"), Math.round(sec("solo")) + " שנ׳", "#8a8a8a", maxSec)}
-      ${bar("הסבר מילולי", sec("verbal"), Math.round(sec("verbal")) + " שנ׳", "#007acc", maxSec)}
-      ${bar("סימון על המבוך", sec("highlight"), Math.round(sec("highlight")) + " שנ׳", "#e0218a", maxSec)}
-    </div>`;
-}
-
-function renderBonus() {
-  const rows = [...codes.values()];
-  const pct = x => Math.round(x * 100) + "%";
-  const low = rows.map(r => r.large.highlight), high = rows.map(r => r.high);
-  const lowFol = avg(low.map(x => x.follow)), highFol = avg(high.map(x => x.follow));
-  const lowSec = avg(low.map(x => x.secs)), highSec = avg(high.map(x => x.secs));
-  const maxSec = Math.max(1, lowSec, highSec);
-  const hf = rows.filter(r => r.highFirst).length;
-  document.getElementById("bonus").innerHTML = `
-    <h2>תמריץ: נקודה אחת מול 10 נקודות</h2>
-    <div class="muted">מבוך גדול עם סימון על המבוך. ${rows.length ? `${hf} התחילו מהבונוס הגבוה, ${rows.length - hf} מהרגיל.` : "עדיין אין תוצאות"}</div>
-    <div class="metric"><h3>דיוק</h3>
-      ${bar("נקודה אחת", avg(low.map(x => x.acc)), pct(avg(low.map(x => x.acc))), "#8a8a8a", 1)}
-      ${bar("10 נקודות", avg(high.map(x => x.acc)), pct(avg(high.map(x => x.acc))), "#f0b400", 1)}
-    </div>
-    <div class="metric"><h3>הלכו אחרי ה-AI כשטעה</h3>
-      ${bar("נקודה אחת", lowFol, pct(lowFol), "#8a8a8a", 1)}
-      ${bar("10 נקודות", highFol, pct(highFol), "#f0b400", 1)}
-    </div>
-    <div class="metric"><h3>זמן ממוצע למבוך</h3>
-      ${bar("נקודה אחת", lowSec, Math.round(lowSec) + " שנ׳", "#8a8a8a", maxSec)}
-      ${bar("10 נקודות", highSec, Math.round(highSec) + " שנ׳", "#f0b400", maxSec)}
-    </div>`;
+    <div class="metric"><h3>זמן ממוצע למבוך</h3>${M.map(m => pair(m, sec, x => Math.round(x) + " שנ׳", maxSec)).join("")}</div>`;
 }
 
 function renderLeaders() {
@@ -159,7 +132,7 @@ function renderLeaders() {
   const top = [...codes.values()].sort((a, b) => b.points - a.points).slice(0, 10);
   document.getElementById("leaders").innerHTML = `
     <h2>טבלת המובילים</h2>
-    <div class="muted">מתוך 36 נקודות אפשריות</div>
+    <div class="muted">מתוך 132 נקודות אפשריות</div>
     <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:18px">
       ${top.map((r, i) => `<tr style="border-bottom:1px solid #eee"><td style="padding:8px;width:40px;font-weight:bold;color:${i < 3 ? "#f0b400" : "#666"}">${i + 1}</td><td style="padding:8px">${esc(r.nick.replace(/_/g, " "))}</td><td style="padding:8px;font-weight:bold;text-align:left">${r.points}</td></tr>`).join("") || "<tr><td class='muted'>עדיין אין תוצאות</td></tr>"}
     </table>`;
@@ -169,14 +142,13 @@ function render() {
   document.getElementById("count").textContent = codes.size;
   renderSize("small", "מבוך קטן (10×10)", "small");
   renderSize("large", "מבוך גדול (50×50)", "large");
-  renderBonus();
   renderLeaders();
 }
 
 document.getElementById("addBtn").onclick = () => { addText(document.getElementById("paste").value); document.getElementById("paste").value = ""; };
 document.getElementById("clearBtn").onclick = () => {
   if (!window.confirmClear) { window.confirmClear = true; document.getElementById("clearBtn").textContent = "ללחוץ שוב לאישור"; return; }
-  codes.clear(); try { localStorage.removeItem("mz2codes"); } catch (e) {}
+  codes.clear(); try { localStorage.removeItem("mz3codes"); } catch (e) {}
   window.confirmClear = false; document.getElementById("clearBtn").textContent = "ניקוי"; render();
 };
 
