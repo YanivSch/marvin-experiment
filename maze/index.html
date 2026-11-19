@@ -59,9 +59,10 @@
   <p>ה-AI לא תמיד צודק. ההחלטה שלכם.</p>
   <p><b>ניקוד:</b> כל מבוך שפתרתם נכון שווה נקודות. בכל שלב שני מבוכים שווים נקודה אחת ושניים שווים 10 נקודות. בסוף יוצגו המובילים בלוח הכיתה.</p>
   <p class="muted">24 מבוכים, כ-12 דקות. בכל מבוך יש זמן מוגבל: 25 שניות לקטן ו-60 לגדול. לא מקבלים משוב עד הסוף.</p>
-  <label for="nick" style="display:block;margin-bottom:6px">כינוי לטבלת המובילים:</label>
-  <input id="nick" maxlength="12" autocomplete="off" placeholder="למשל: יניב" style="width:100%;font:inherit;padding:10px;border-radius:10px;border:1px solid #ccc;margin-bottom:12px;box-sizing:border-box">
-  <button class="primary" id="startBtn">מתחילים</button>
+  <label for="nick" style="display:block;margin-bottom:6px">כינוי לטבלת המובילים (חובה):</label>
+  <input id="nick" maxlength="12" autocomplete="off" placeholder="למשל: הנווט" required style="width:100%;font:inherit;padding:10px;border-radius:10px;border:1px solid #ccc;margin-bottom:6px;box-sizing:border-box">
+  <p class="muted hidden" id="nickErr" style="color:#c0392b;margin:0 0 8px">צריך לכתוב כינוי כדי להתחיל.</p>
+  <button class="primary" id="startBtn" style="margin-top:6px">מתחילים</button>
 </section>
 
 <!-- מעבר בין שלבים -->
@@ -442,7 +443,7 @@ function finish() {
   const seg = x => x.s.mode === "solo"
     ? [x.low.correct, x.high.correct, x.low.secs, x.high.secs].join(".")
     : [x.low.correct, x.high.correct, x.wrongHigh ? "B" : "N", x.followed, x.low.secs, x.high.secs].join(".");
-  const nick = ($("nick").value || "").trim().replace(/[\s\-]+/g, "_").slice(0, 12) || "ללא_כינוי";
+  const nick = ($("nick").value || "").trim().replace(/[\s\-]+/g, "_").slice(0, 12);
   const code = `MZ3-${per.map(seg).join("-")}-P${points}-${nick}`;
   $("code").textContent = code;
 
@@ -467,7 +468,19 @@ function finish() {
   show("done");
 }
 
-$("startBtn").onclick = next;
+$("startBtn").onclick = () => {
+  if (!$("nick").value.trim()) {
+    $("nickErr").classList.remove("hidden");
+    $("nick").style.borderColor = "#c0392b";
+    $("nick").focus();
+    return;
+  }
+  next();
+};
+$("nick").addEventListener("input", () => {
+  $("nickErr").classList.add("hidden");
+  $("nick").style.borderColor = "#ccc";
+});
 window.addEventListener("resize", () => {
   if (current) draw(current.m, current.p.mode === "highlight" ? { cells: current.m.paths[current.aiPick], exitDir: current.m.exits[current.aiPick].dir } : null);
 });
