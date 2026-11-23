@@ -42,7 +42,7 @@
       <textarea id="paste" placeholder="MZ3-2.1.9.12-2.2.B.0.7.10-..."></textarea>
       <div class="row">
         <button id="addBtn">הוספה ללוח</button>
-        <button class="ghost" id="clearBtn">ניקוי</button>
+        <button class="ghost" id="clearBtn">ניקוי קודים שהודבקו</button>
       </div>
     </div>
   </div>
@@ -67,8 +67,14 @@ const SHEET_URL = "https://script.google.com/macros/s/AKfycbwUzo2U8YDiKNB8abNtQK
 const SOLO = String.raw`(\d)\.(\d)\.(\d{1,2})\.(\d{1,2})`;
 const AI = String.raw`(\d)\.(\d)\.([NB])\.(\d)\.(\d{1,2})\.(\d{1,2})`;
 const RE = new RegExp(`MZ3-${SOLO}-${AI}-${AI}-${SOLO}-${AI}-${AI}-P(\\d{1,3})-([^\\s]{1,12})`, "g");
-const codes = new Map();
-try { JSON.parse(localStorage.getItem("mz3codes") || "[]").forEach(c => { const p = parse(c); if (p) codes.set(c, p); }); } catch (e) {}
+// שני מקורות: קודים מהגיליון (מוחלפים בכל קריאה, כך שמחיקה בגיליון נעלמת גם מהלוח)
+// וקודים שהודבקו ידנית (נשמרים בדפדפן עד "ניקוי"). הלוח מציג את האיחוד, בלי כפילויות.
+const sheetCodes = new Map(), pastedCodes = new Map();
+let codes = new Map();
+try { localStorage.removeItem("mz3codes"); } catch (e) {} // שמירה ישנה, שהחזיקה גם קודים מהגיליון
+try { JSON.parse(localStorage.getItem("mz3pasted") || "[]").forEach(c => { const p = parse(c); if (p) pastedCodes.set(c, p); }); } catch (e) {}
+function merge() { codes = new Map([...sheetCodes, ...pastedCodes]); }
+merge();
 
 // מחזיר לכל גודל ולכל צורת סיוע: דיוק וזמן בכל רמת בונוס, ואם ה-AI טעה במבוך רגיל או בונוס והאם הלכו אחריו
 function parse(code) {
@@ -92,8 +98,9 @@ function parse(code) {
 
 function addText(text) {
   const found = String(text).match(RE) || [];
-  found.forEach(c => { const p = parse(c); if (p) codes.set(c, p); });
-  try { localStorage.setItem("mz3codes", JSON.stringify([...codes.keys()])); } catch (e) {}
+  found.forEach(c => { const p = parse(c); if (p) pastedCodes.set(c, p); });
+  try { localStorage.setItem("mz3pasted", JSON.stringify([...pastedCodes.keys()])); } catch (e) {}
+  merge();
   render();
 }
 
@@ -148,14 +155,23 @@ function render() {
 document.getElementById("addBtn").onclick = () => { addText(document.getElementById("paste").value); document.getElementById("paste").value = ""; };
 document.getElementById("clearBtn").onclick = () => {
   if (!window.confirmClear) { window.confirmClear = true; document.getElementById("clearBtn").textContent = "ללחוץ שוב לאישור"; return; }
-  codes.clear(); try { localStorage.removeItem("mz3codes"); } catch (e) {}
-  window.confirmClear = false; document.getElementById("clearBtn").textContent = "ניקוי"; render();
+  pastedCodes.clear(); try { localStorage.removeItem("mz3pasted"); } catch (e) {}
+  merge();
+  window.confirmClear = false; document.getElementById("clearBtn").textContent = "ניקוי קודים שהודבקו"; render();
 };
 
 // מצב גיליון: קריאה כל 10 שניות דרך JSONP
 if (SHEET_URL) {
   document.getElementById("source").textContent = "מתעדכן מהגיליון כל 10 שניות";
-  window.onSheet = data => (data.rows || []).forEach(r => addText(r.code));
+  window.onSheet = data => {
+    sheetCodes.clear();
+    (data.rows || []).forEach(r => {
+      RE.lastIndex = 0;
+      const m = RE.exec(String(r.code)); if (!m) return;
+      const p = parse(m[0]); if (p) sheetCodes.set(m[0], p);
+    });
+    merge(); render();
+  };
   const poll = () => {
     const s = document.createElement("script");
     s.src = SHEET_URL + "?action=list&sheet=maze&callback=onSheet&t=" + Date.now();
